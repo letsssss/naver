@@ -21,6 +21,20 @@ export default function KakaoLoginButton({
   // 버튼 텍스트 결정
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
+  const waitForCodeVerifierAndRedirect = (url: string, attempt = 0) => {
+    const verifier = localStorage.getItem('supabase.auth.code_verifier');
+    if (verifier) {
+      console.log("✅ code_verifier 저장 확인됨 → 리디렉션 시작");
+      window.location.href = url;
+    } else if (attempt < 10) {
+      console.warn(`⏳ code_verifier 아직 없음 → ${200 * (attempt + 1)}ms 후 재시도`);
+      setTimeout(() => waitForCodeVerifierAndRedirect(url, attempt + 1), 200);
+    } else {
+      console.error("❌ code_verifier 저장 실패 → 강제 리디렉션 (안정성 저하 가능)");
+      window.location.href = url;
+    }
+  };
+
   const handleKakaoAuth = async () => {
     try {
       setIsLoading(true);
@@ -121,12 +135,8 @@ export default function KakaoLoginButton({
           });
         }
         
-        // ✅ PKCE 저장이 완료될 시간을 줌 (300ms 권장)
-        console.log("⏱️ [PKCE] 리디렉션 전 300ms 지연 (code_verifier 저장 시간 확보)");
-        setTimeout(() => {
-          console.log("✈️ [PKCE] 카카오 인증 페이지로 리디렉션 시작");
-          window.location.href = data.url!;
-        }, 300);
+        // ✅ 안정화된 리디렉션 방식으로 대체
+        waitForCodeVerifierAndRedirect(data.url);
       } else {
         console.error('카카오 인증 URL이 없습니다.');
         toast.error('카카오 인증 처리 중 오류가 발생했습니다.');
