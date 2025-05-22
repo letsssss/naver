@@ -121,7 +121,12 @@ export default function KakaoLoginButton({
           });
         }
         
-        window.location.href = data.url;
+        // ✅ PKCE 저장이 완료될 시간을 줌 (300ms 권장)
+        console.log("⏱️ [PKCE] 리디렉션 전 300ms 지연 (code_verifier 저장 시간 확보)");
+        setTimeout(() => {
+          console.log("✈️ [PKCE] 카카오 인증 페이지로 리디렉션 시작");
+          window.location.href = data.url!;
+        }, 300);
       } else {
         console.error('카카오 인증 URL이 없습니다.');
         toast.error('카카오 인증 처리 중 오류가 발생했습니다.');
