@@ -83,6 +83,13 @@ export default function KakaoLoginButton({
 
       console.log("🔑 [OAuth 시작] data:", data)
       console.log("❗ [OAuth 시작] error:", error)
+      
+      // 🆕 OAuth 요청 직후 localStorage 디버깅 - PKCE 확인
+      if (typeof window !== 'undefined') {
+        console.log("🧪 [디버깅] OAuth 요청 직후 localStorage keys:", Object.keys(localStorage));
+        console.log("🔍 code_verifier 존재 여부:", localStorage.getItem('supabase.auth.code_verifier'));
+        // 이 로그에서 code_verifier가 null이면 Supabase가 내부적으로 저장을 실패한 것
+      }
 
       if (error) {
         console.error('카카오 인증 에러:', error.message);
