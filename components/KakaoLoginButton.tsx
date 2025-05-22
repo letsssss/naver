@@ -33,10 +33,11 @@ export default function KakaoLoginButton({
       // 실제 카카오 로그인 처리
       console.log(`카카오 ${mode === 'login' ? '로그인' : '회원가입'} 시작...`);
       
-      // 카카오 OAuth 요청 - redirectTo 제거하여 Supabase가 자동으로 siteUrl 기반으로 처리하도록 함
+      // 카카오 OAuth 요청 - redirectTo 추가
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
+          redirectTo: 'https://www.easyticket82.com/auth/callback',
           scopes: 'profile_nickname profile_image account_email', // email 스코프 추가
           queryParams: {
             'single_account': 'true' // 하나의 계정만 허용하도록 플래그 추가
