@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase-login';
+import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
+import type { Database } from '@/types/supabase.types';
 import { toast } from 'sonner';
 
 type KakaoLoginButtonProps = {
@@ -33,6 +34,9 @@ export default function KakaoLoginButton({
       // 실제 카카오 로그인 처리
       console.log(`카카오 ${mode === 'login' ? '로그인' : '회원가입'} 시작...`);
       
+      // PKCE 지원을 위해 createPagesBrowserClient를 직접 생성하여 사용
+      const supabase = createPagesBrowserClient<Database>();
+      
       // 카카오 OAuth 요청 - redirectTo 추가
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
@@ -60,6 +64,12 @@ export default function KakaoLoginButton({
         // 카카오 인증 페이지로 리디렉션하기 전에 로컬 스토리지에 모드 저장
         if (typeof window !== 'undefined') {
           localStorage.setItem('kakao_auth_mode', mode);
+          
+          // PKCE 디버깅을 위한 확인 로그
+          const allKeys = Object.keys(localStorage);
+          const pkceKeys = allKeys.filter(key => key.includes('code_verifier'));
+          console.log("✅ [PKCE 디버깅] localStorage 키:", allKeys);
+          console.log("✅ [PKCE 디버깅] code_verifier 키:", pkceKeys);
         }
         
         window.location.href = data.url;
