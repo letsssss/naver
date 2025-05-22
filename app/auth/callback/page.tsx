@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@/lib/supabase';
+import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function AuthCallback() {
       try {
         console.log("🔍 [Callback 페이지] 실행됨");
         console.log("🔍 [Callback 페이지] 전체 URL:", window.location.href);
-        const supabase = createBrowserClient();
+        const supabase = createPagesBrowserClient();
         
         // 현재 URL 상태 확인 (해시와 쿼리 파라미터 모두 확인)
         const hasHashParams = window.location.hash && window.location.hash.length > 1;
