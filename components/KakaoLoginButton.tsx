@@ -34,23 +34,16 @@ export default function KakaoLoginButton({
         });
       }
       
-      // 기존 PKCE 인증 정보 정리 (이전 인증 시도에서 남아있는 데이터 제거)
+      // 기존 PKCE 인증 정보 정리 (code_verifier는 반드시 유지)
       if (typeof window !== 'undefined') {
         console.log("🧹 [OAuth 시작] 불필요한 로컬 스토리지 정리");
         
-        // ❌ 이전 코드 - 문제 발생: code_verifier도 같이 지워짐
-        // localStorage.removeItem('supabase.auth.code_verifier'); 
+        // 🔒 PKCE 인증에 필요한 code_verifier는 절대 삭제하지 않음
+        // URL만 안전하게 정리
         localStorage.removeItem('supabase.auth.url');
         
-        // ✅ code_verifier는 제외하고 다른 키만 정리
-        const keysToRemove = Object.keys(localStorage).filter(key =>
-          key.includes('supabase') && !key.includes('code_verifier')
-        );
-        
-        keysToRemove.forEach(key => {
-          console.log(`  🧹 정리: ${key}`);
-          localStorage.removeItem(key);
-        });
+        // 디버깅용 로그
+        console.log("✅ [OAuth 시작] code_verifier 보존됨");
       }
       
       // 회원가입 모드이고 단순 리디렉션을 원하는 경우
