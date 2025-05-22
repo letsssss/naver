@@ -44,6 +44,9 @@ export default function KakaoLoginButton({
         }
       });
 
+      console.log("🔑 [OAuth 시작] data:", data)
+      console.log("❗ [OAuth 시작] error:", error)
+
       if (error) {
         console.error('카카오 인증 에러:', error.message);
         toast.error('카카오 인증 중 오류가 발생했습니다.');

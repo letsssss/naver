@@ -16,6 +16,31 @@ export default function TokenRefresher() {
     // 브라우저 전용 Supabase 클라이언트 생성
     const browserClient = createClientComponentClient();
     
+    // 앱 시작 시 세션 확인
+    browserClient.auth.getSession().then(({ data, error }) => {
+      console.log("🚪 [App 시작] getSession 호출됨");
+      console.log("🔎 [App 시작] 세션 데이터:", data);
+      console.log("❌ [App 시작] 에러:", error);
+
+      if (data?.session) {
+        console.log("✅ [App 시작] 유효한 세션 확인됨:", {
+          userId: data.session.user.id,
+          email: data.session.user.email,
+          expiresAt: new Date(data.session.expires_at! * 1000).toLocaleString()
+        });
+        // localStorage 상태도 확인
+        console.log("📦 [App 시작] localStorage 상태:", {
+          localStorageKeys: Object.keys(localStorage).filter(k => 
+            k.includes('token') || k.includes('supabase') || k.includes('auth')
+          )
+        });
+        // 쿠키 상태 확인
+        console.log("🍪 [App 시작] 쿠키 상태:", document.cookie);
+      } else {
+        console.warn("⚠️ [App 시작] 세션 없음 또는 만료됨");
+      }
+    });
+    
     const { data: listener } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 인증 상태 변경:', event, session ? '세션 있음' : '세션 없음');
       
