@@ -10,6 +10,19 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // localStorage 모든 키 출력 (콜백 페이지 진입 시점)
+        if (typeof window !== 'undefined') {
+          console.log("🗂️ [DEBUG] Callback 페이지 진입 시 localStorage 전체 키:", Object.keys(localStorage));
+          console.log("🗂️ [DEBUG] Callback 페이지 진입 시 localStorage 값들:");
+          Object.entries(localStorage).forEach(([key, val]) => {
+            console.log(`  🔑 ${key}:`, val);
+          });
+          
+          // PKCE 관련 키 특별 확인
+          const codeVerifier = localStorage.getItem('supabase.auth.code_verifier');
+          console.log("🔍 [PKCE DEBUG] 콜백 페이지 진입 시 code_verifier:", codeVerifier);
+        }
+      
         // 인증 관련 로컬 스토리지 키 정리 (PKCE용 code_verifier 유지)
         console.log("🧹 [Callback 페이지] 불필요한 로컬 스토리지 정리");
         localStorage.removeItem("supabase.auth.token");
@@ -87,10 +100,25 @@ export default function AuthCallback() {
           if (code) {
             console.log("✅ [Callback 페이지] 인증 코드 발견:", code);
             
+            // PKCE 상태 확인 (code 발견 시점)
+            if (typeof window !== 'undefined') {
+              const supabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+              console.log("🕵️‍♂️ [DEBUG] 인증 코드 발견 시점의 supabase.* 관련 localStorage:", supabaseKeys);
+              supabaseKeys.forEach(k => console.log(`  🔑 ${k}:`, localStorage.getItem(k)));
+              
+              // PKCE 관련 키의 정확한 값 출력
+              const codeVerifier = localStorage.getItem('supabase.auth.code_verifier');
+              console.log("🔍 [PKCE DEBUG] 인증 코드 발견 시점의 code_verifier:", codeVerifier);
+            }
+            
             try {
               // Supabase가 쿼리 파라미터에서 자동으로 인증 코드 처리
               // getSession()을 호출해 현재 세션 상태 확인
               const { data, error } = await supabase.auth.getSession();
+              
+              // 디버깅을 위한 추가 로그
+              console.log("📦 [Callback DEBUG] getSession 결과:", data);
+              console.log("❗ [Callback DEBUG] getSession 오류:", error);
               
               console.log("📦 [Callback 페이지] 세션 확인 결과:", 
                 data?.session ? "세션 있음" : "세션 없음", 
@@ -103,6 +131,11 @@ export default function AuthCallback() {
                   email: data.session.user.email,
                   expiresAt: new Date(data.session.expires_at! * 1000).toLocaleString()
                 });
+                
+                // 세션 설정 성공 후 localStorage 상태 확인
+                if (typeof window !== 'undefined') {
+                  console.log("🗂️ [DEBUG] 세션 설정 성공 후 localStorage 키:", Object.keys(localStorage));
+                }
                 
                 handleSuccessfulAuth();
                 return;
@@ -129,9 +162,13 @@ export default function AuthCallback() {
         
         // 3. 다른 모든 방법 실패 시 세션 확인
         console.log("🔍 [Callback 페이지] 세션 확인 중...");
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        if (session) {
+        // 디버깅을 위한 추가 로그
+        console.log("📦 [Callback DEBUG] 최종 getSession 결과:", sessionData);
+        console.log("❗ [Callback DEBUG] 최종 getSession 오류:", sessionError);
+        
+        if (sessionData.session) {
           console.log("✅ [Callback 페이지] 기존 세션 발견");
           handleSuccessfulAuth();
         } else {

@@ -25,6 +25,15 @@ export default function KakaoLoginButton({
     try {
       setIsLoading(true);
       
+      // 로그인 시작 시점의 전체 localStorage 상태 확인
+      if (typeof window !== 'undefined') {
+        console.log("🧪 [DEBUG] 인증 시작 전 localStorage 전체 키:", Object.keys(localStorage));
+        console.log("🗂️ [DEBUG] localStorage 전체 값들:");
+        Object.entries(localStorage).forEach(([key, val]) => {
+          console.log(`  🔑 ${key}:`, val);
+        });
+      }
+      
       // 기존 PKCE 인증 정보 정리 (이전 인증 시도에서 남아있는 데이터 제거)
       if (typeof window !== 'undefined') {
         console.log("🧹 [OAuth 시작] 기존 PKCE 데이터 정리");
@@ -54,6 +63,17 @@ export default function KakaoLoginButton({
       // PKCE 지원을 위해 createPagesBrowserClient를 직접 생성하여 사용
       const supabase = createPagesBrowserClient<Database>();
       
+      // signInWithOAuth 직전 Supabase 관련 키 상태 확인
+      if (typeof window !== 'undefined') {
+        const supabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+        console.log("🕵️‍♂️ [DEBUG] OAuth 요청 전 supabase.* 관련 localStorage:", supabaseKeys);
+        supabaseKeys.forEach(k => console.log(`  🔑 ${k}:`, localStorage.getItem(k)));
+        
+        // PKCE 관련 키의 정확한 값 출력
+        const codeVerifier = localStorage.getItem('supabase.auth.code_verifier');
+        console.log("🔍 [PKCE DEBUG] code_verifier:", codeVerifier);
+      }
+      
       // 카카오 OAuth 요청 - redirectTo 추가
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
@@ -76,6 +96,8 @@ export default function KakaoLoginButton({
       }
 
       if (data?.url) {
+        // 리디렉션 URL 상세 로그
+        console.log("🌐 [DEBUG] redirect 예정 URL:", data.url);
         console.log('카카오 인증 페이지로 리디렉션:', data.url);
         
         // 카카오 인증 페이지로 리디렉션하기 전에 로컬 스토리지에 모드 저장
@@ -87,6 +109,14 @@ export default function KakaoLoginButton({
           const pkceKeys = allKeys.filter(key => key.includes('code_verifier'));
           console.log("✅ [PKCE 디버깅] localStorage 키:", allKeys);
           console.log("✅ [PKCE 디버깅] code_verifier 키:", pkceKeys);
+          
+          // 리디렉션 직전 상태 확인
+          console.log("🧪 [DEBUG] 리디렉션 직전 localStorage 상태:");
+          Object.entries(localStorage).forEach(([key, val]) => {
+            if (key.includes('supabase') || key.includes('code_verifier')) {
+              console.log(`  🔑 ${key}:`, val);
+            }
+          });
         }
         
         window.location.href = data.url;
