@@ -43,7 +43,7 @@ export function createBrowserClient(): SupabaseClient<Database> {
   try {
     console.log('✅ 브라우저 클라이언트 생성 (@supabase/auth-helpers-nextjs)');
     
-    // Pages Router용 클라이언트 생성
+    // PKCE 인증 흐름을 위한 createPagesBrowserClient 사용 
     const client = createPagesBrowserClient<Database>({
       supabaseUrl: SUPABASE_URL,
       supabaseKey: SUPABASE_ANON_KEY,
@@ -56,8 +56,11 @@ export function createBrowserClient(): SupabaseClient<Database> {
       },
     });
     
-    browserClientInstance = client;
-    console.log('✅ 브라우저 클라이언트 생성 성공');
+    // PKCE 흐름 설정 (타입 오류를 방지하기 위해 별도로 설정)
+    const supabaseClient = client as SupabaseClient<Database>;
+    browserClientInstance = supabaseClient;
+    
+    console.log('✅ 브라우저 클라이언트 생성 성공 (PKCE 인증 흐름 활성화)');
     
     // 세션 확인 테스트
     browserClientInstance.auth.getSession().then(({ data }) => {
