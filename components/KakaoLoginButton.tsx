@@ -25,6 +25,23 @@ export default function KakaoLoginButton({
     try {
       setIsLoading(true);
       
+      // 기존 PKCE 인증 정보 정리 (이전 인증 시도에서 남아있는 데이터 제거)
+      if (typeof window !== 'undefined') {
+        console.log("🧹 [OAuth 시작] 기존 PKCE 데이터 정리");
+        localStorage.removeItem('supabase.auth.code_verifier');
+        localStorage.removeItem('supabase.auth.url');
+        
+        // Supabase 관련 키를 좀 더 폭넓게 찾아서 정리
+        const keysToRemove = Object.keys(localStorage).filter(key => 
+          key.includes('supabase') && (key.includes('code_verifier') || key.includes('url'))
+        );
+        
+        keysToRemove.forEach(key => {
+          console.log(`  🗑️ 삭제: ${key}`);
+          localStorage.removeItem(key);
+        });
+      }
+      
       // 회원가입 모드이고 단순 리디렉션을 원하는 경우
       if (mode === 'signup' && !text) {
         router.push('/signup');
