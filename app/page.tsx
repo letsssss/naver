@@ -14,20 +14,20 @@ export default function Page() {
     console.log("🔍 [메인 페이지] URL 해시 확인:", isAuthCallback ? "인증 콜백 감지됨" : "일반 접근");
     
     if (isAuthCallback) {
-      console.log("📦 [Callback] getSessionFromUrl() 호출 시도");
+      console.log("📦 [Callback] 인증 콜백 URL 감지됨");
       const supabase = createBrowserClient();
       
-      // Supabase 세션 처리
-      supabase.auth.getSessionFromUrl().then(({ data, error }) => {
-        console.log("📦 [Callback] getSessionFromUrl() 호출됨");
-        console.log("🔐 [Callback] data:", data);
-        console.log("❌ [Callback] error:", error);
-
-        if (data?.session) {
-          console.log("✅ [Callback] 세션 복원 성공:", {
-            userId: data.session.user.id,
-            email: data.session.user.email,
-            expiresAt: new Date(data.session.expires_at! * 1000).toLocaleString()
+      // URL 해시에서 수동으로 세션 정보 처리
+      // Supabase v2에서는 getSessionFromUrl() 대신 다음 방식 사용
+      supabase.auth.onAuthStateChange((event, session) => {
+        console.log("📦 [Callback] 인증 상태 변경:", event);
+        console.log("🔐 [Callback] 세션 데이터:", session ? "있음" : "없음");
+        
+        if (event === 'SIGNED_IN' && session) {
+          console.log("✅ [Callback] 세션 설정 성공:", {
+            userId: session.user.id,
+            email: session.user.email,
+            expiresAt: new Date(session.expires_at! * 1000).toLocaleString()
           });
           
           // URL의 해시 부분 제거 후 홈페이지로 리다이렉트
@@ -42,8 +42,16 @@ export default function Page() {
           setTimeout(() => {
             router.replace("/");
           }, 500); // 약간의 지연 후 리다이렉트
+        } else if (event === 'INITIAL_SESSION') {
+          console.log("✅ [Callback] 초기 세션 로드됨");
+          if (session) {
+            console.log("✅ [Callback] 유효한 세션 있음");
+            router.replace("/");
+          } else {
+            console.warn("⚠️ [Callback] 세션 없음");
+          }
         } else {
-          console.warn("⚠️ [Callback] 세션 복원 실패");
+          console.warn("⚠️ [Callback] 세션 설정 실패 또는 다른 이벤트:", event);
         }
       });
     } else {
