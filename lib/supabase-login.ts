@@ -1,6 +1,6 @@
 'use client'
 
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
+import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/types/supabase.types'
 
-export const supabase = createBrowserSupabaseClient<Database>() 
+export const supabase = createPagesBrowserClient<Database>() 

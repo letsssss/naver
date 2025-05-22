@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
+import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs'
 
 // 타입 정의
 interface TransactionStatus {
@@ -420,7 +420,7 @@ export function useMyPageData(user: User | null, apiBaseUrl: string) {
     setIsLoadingNotifications(true);
     try {
       // Supabase 세션에서 토큰 가져오기
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createPagesBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || '';
       
@@ -479,7 +479,7 @@ export function useMyPageData(user: User | null, apiBaseUrl: string) {
   const markNotificationAsRead = async (notificationId: number) => {
     try {
       // Supabase 세션에서 토큰 가져오기
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createPagesBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || '';
       
