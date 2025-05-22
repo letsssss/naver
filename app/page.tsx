@@ -17,43 +17,75 @@ export default function Page() {
       console.log("📦 [Callback] 인증 콜백 URL 감지됨");
       const supabase = createBrowserClient();
       
-      // URL 해시에서 수동으로 세션 정보 처리
-      // Supabase v2에서는 getSessionFromUrl() 대신 다음 방식 사용
-      supabase.auth.onAuthStateChange((event, session) => {
-        console.log("📦 [Callback] 인증 상태 변경:", event);
-        console.log("🔐 [Callback] 세션 데이터:", session ? "있음" : "없음");
+      // 핵심: Supabase v2에서는 URL 해시에서 직접 세션 정보 추출 및 설정
+      try {
+        console.log("📦 [Callback] 해시 문자열:", window.location.hash);
         
-        if (event === 'SIGNED_IN' && session) {
-          console.log("✅ [Callback] 세션 설정 성공:", {
-            userId: session.user.id,
-            email: session.user.email,
-            expiresAt: new Date(session.expires_at! * 1000).toLocaleString()
-          });
+        // 해시에서 Supabase 세션 설정 (이 부분이 getSessionFromUrl()의 역할)
+        supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+          console.log("🔐 [Callback] 현재 세션 확인:", currentSession ? "있음" : "없음");
           
-          // URL의 해시 부분 제거 후 홈페이지로 리다이렉트
-          window.history.replaceState(
-            {}, 
-            document.title, 
-            window.location.pathname + window.location.search
+          // URL 해시 파라미터에서 직접 엑세스 토큰 추출
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          const expiresIn = hashParams.get('expires_in');
+          const tokenType = hashParams.get('token_type');
+          
+          console.log("🔑 [Callback] 토큰 존재:", 
+            accessToken ? "✅ 액세스 토큰 있음" : "❌ 액세스 토큰 없음",
+            refreshToken ? "✅ 리프레시 토큰 있음" : "❌ 리프레시 토큰 없음"
           );
           
-          // 세션이 복원된 후 메인 페이지로 이동
-          router.refresh(); // 먼저 페이지 리프레시 (Next.js 내부 상태 갱신)
-          setTimeout(() => {
-            router.replace("/");
-          }, 500); // 약간의 지연 후 리다이렉트
-        } else if (event === 'INITIAL_SESSION') {
-          console.log("✅ [Callback] 초기 세션 로드됨");
-          if (session) {
-            console.log("✅ [Callback] 유효한 세션 있음");
-            router.replace("/");
+          if (accessToken && refreshToken) {
+            // 수동으로 세션 설정 (getSessionFromUrl 대체)
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            }).then(({ data, error }) => {
+              console.log("📦 [Callback] 세션 수동 설정 결과:", data.session ? "성공" : "실패", error || "");
+              
+              if (data.session) {
+                console.log("✅ [Callback] 세션 설정 성공:", {
+                  userId: data.session.user.id,
+                  email: data.session.user.email,
+                  expiresAt: new Date(data.session.expires_at! * 1000).toLocaleString()
+                });
+                
+                // 세션이 복원된 후 메인 페이지로 이동 전에 상태 업데이트
+                // Supabase가 쿠키와 localStorage를 설정할 시간을 주기 위한 지연
+                setTimeout(() => {
+                  // URL의 해시 부분 제거
+                  window.history.replaceState(
+                    {}, 
+                    document.title, 
+                    window.location.pathname + window.location.search
+                  );
+                  
+                  router.refresh(); // 먼저 페이지 리프레시 (Next.js 내부 상태 갱신)
+                  router.replace("/");
+                }, 500);
+              } else {
+                console.warn("⚠️ [Callback] 세션 설정 실패:", error);
+              }
+            });
           } else {
-            console.warn("⚠️ [Callback] 세션 없음");
+            console.warn("⚠️ [Callback] 해시에서 토큰을 찾을 수 없음");
           }
-        } else {
-          console.warn("⚠️ [Callback] 세션 설정 실패 또는 다른 이벤트:", event);
-        }
-      });
+        });
+        
+        // 인증 상태 변화 리스너 등록 (위에서 설정한 세션 반영 감지)
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log("🔄 [Callback] 인증 상태 변경:", event, session ? "세션 있음" : "세션 없음");
+        });
+        
+        // 컴포넌트가 언마운트되면 리스너 해제
+        return () => {
+          listener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("❌ [Callback] 오류 발생:", error);
+      }
     } else {
       // 인증 콜백이 아닌 경우에만 리디렉션
       router.push('/ticket-cancellation');
