@@ -107,8 +107,10 @@ export default function AuthCallback() {
                 // 이 단계는 Supabase v2에서 내부적으로 처리되므로 필요 없을 수 있음
                 // 그러나 문제 해결을 위해 포함
                 
-                // window.location.href를 새로고침하여 Supabase가 다시 처리하도록 함
-                window.location.href = window.location.href;
+                // 무한 새로고침 방지: 새로고침 대신 로그인 페이지로 리디렉션
+                // window.location.href = window.location.href;
+                console.error("❌ [Callback 페이지] 세션 교환 실패, 중단합니다.");
+                router.push("/login");
                 return;
               }
             } catch (codeError) {
