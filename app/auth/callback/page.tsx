@@ -10,6 +10,11 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // 인증 관련 로컬 스토리지 키 정리 (오래된 상태 초기화)
+        console.log("🧹 [Callback 페이지] 로컬 스토리지 인증 키 정리");
+        localStorage.removeItem("supabase.auth.token");
+        localStorage.removeItem("supabase.auth.code_verifier");
+        
         console.log("🔍 [Callback 페이지] 실행됨");
         console.log("🔍 [Callback 페이지] 전체 URL:", window.location.href);
         const supabase = createPagesBrowserClient();
