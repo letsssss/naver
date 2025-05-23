@@ -1,9 +1,33 @@
-# 🔍 Code Verifier 디버깅 가이드
+# 🔍 Code Verifier 디버깅 가이드 (2024-2025 Supabase v2 기준)
 
 ## 📋 목표
 `code_verifier`가 생성되어 localStorage에 저장되었는지 확인하고, 언제 삭제되거나 접근 불가 상태가 되었는지 추적합니다.
 
-## 🔧 추가된 디버깅 로그 단계
+## ⚠️ **중요: Supabase v2 PKCE 플로우 주의사항**
+
+### ✅ **올바른 방법**
+```typescript
+// ✅ Supabase가 자동으로 리디렉션 처리
+const { data, error } = await supabase.auth.signInWithOAuth({
+  provider: 'kakao',
+  options: {
+    redirectTo: window.location.origin + '/auth/callback',
+  }
+});
+// data.url을 사용하지 말고 Supabase가 알아서 처리하도록 둡니다!
+```
+
+### ❌ **피해야 할 방법**
+```typescript
+// ❌ 수동 리디렉션은 localStorage 격리를 발생시킵니다!
+window.location.href = data.url;
+window.open(data.url);
+await waitForCodeVerifierAndRedirect(data.url);
+```
+
+**이유**: Supabase v2에서는 `signInWithOAuth()` 내부에서 자동으로 PKCE 플로우를 관리하므로, 수동 리디렉션을 사용하면 `code_verifier`가 손실될 수 있습니다.
+
+## 🔧 수정된 디버깅 로그 단계
 
 ### ✅ 0단계: 도메인 정보 확인 (신규 추가)
 ```typescript
@@ -41,18 +65,18 @@ console.log("📦 [OAuth 직후] localStorage 상태:", JSON.stringify(localStor
 - `code_verifier`가 새로 생성되었는지
 - Supabase가 PKCE 플로우를 시작했는지
 
-### ✅ 3단계: waitForCodeVerifierAndRedirect() 함수 내부
+### ✅ 3단계: Supabase 자동 리디렉션 (수정됨)
 ```typescript
-while (waited < maxWait) {
-  const verifier = localStorage.getItem('supabase.auth.code_verifier');
-  console.log(`🕒 [PKCE 체크] ${waited}ms 경과 - code_verifier:`, verifier);
-  // ...
-}
+// ✅ Supabase가 자동으로 리디렉션 처리
+console.log("🚀 [CRITICAL] Supabase 자동 리디렉션 시작");
+const { data, error } = await supabase.auth.signInWithOAuth({...});
+console.log("✅ [INFO] Supabase가 자동으로 리디렉션을 처리합니다.");
 ```
 
 **확인 사항:**
-- `code_verifier`가 언제 생성되는지 (몇 ms 후)
-- 생성되지 않으면 타임아웃까지 대기
+- Supabase가 자동으로 카카오 OAuth 페이지로 리디렉션
+- `code_verifier`가 localStorage에 안전하게 보존됨
+- 수동 `window.location.href` 사용 안 함
 
 ### ✅ 4단계: 콜백 페이지(/auth/callback) 진입 직후
 ```typescript
@@ -67,16 +91,16 @@ console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase
 
 ## 📌 분석 시나리오
 
-### 🟢 정상 케이스
+### 🟢 정상 케이스 (Supabase v2 자동 리디렉션)
 1. **1단계**: `code_verifier` 없음 (정상)
 2. **2단계**: `code_verifier` 생성됨 ✅
-3. **3단계**: 100-200ms 내에 감지됨 ✅  
+3. **3단계**: Supabase 자동 리디렉션 실행 ✅  
 4. **4단계**: 콜백 페이지에서도 존재함 ✅
 
 ### 🔴 문제 케이스 A: Supabase 내부 저장 실패
 1. **1단계**: `code_verifier` 없음
 2. **2단계**: `code_verifier` 여전히 없음 ❌
-3. **3단계**: 3초 타임아웃까지 없음 ❌
+3. **3단계**: Supabase 리디렉션 실행되지만 PKCE 없음 ❌
 4. **4단계**: 당연히 없음 ❌
 
 **원인**: Supabase SDK 버그 또는 브라우저 호환성 문제
@@ -84,7 +108,7 @@ console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase
 ### 🔴 문제 케이스 B: 리디렉션 중 localStorage 손실
 1. **1단계**: `code_verifier` 없음
 2. **2단계**: `code_verifier` 생성됨 ✅
-3. **3단계**: 정상 감지됨 ✅
+3. **3단계**: Supabase 자동 리디렉션 정상 ✅
 4. **4단계**: 콜백 페이지에서 사라짐 ❌
 
 **원인**: 
@@ -92,26 +116,13 @@ console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase
 - 도메인 불일치 (localhost vs 실제 도메인)
 - 시크릿 모드 또는 보안 정책
 
-### 🔴 문제 케이스 C: 너무 빠른 리디렉션
+### 🔴 문제 케이스 C: 수동 리디렉션 사용 (신규 - 가장 흔한 원인)
 1. **1단계**: `code_verifier` 없음
-2. **2단계**: `code_verifier` 없음 (아직)
-3. **3단계**: 50ms 후 생성되지만 이미 리디렉션됨 ❌
-4. **4단계**: 없음 ❌
+2. **2단계**: `code_verifier` 생성됨 ✅
+3. **3단계**: `window.location.href = data.url` 수동 사용 ❌
+4. **4단계**: localStorage 격리로 인해 사라짐 ❌
 
-**원인**: 네트워크 지연 또는 Supabase 비동기 처리 지연
-
-### 🔴 문제 케이스 D: 도메인 불일치 (신규 추가)
-1. **0단계**: 도메인 불일치 감지 ⚠️
-2. **1단계**: `code_verifier` 없음
-3. **2단계**: `code_verifier` 생성됨 ✅
-4. **3단계**: 정상 감지됨 ✅
-5. **4단계**: 콜백 페이지에서 사라짐 ❌ (다른 도메인)
-
-**원인**: 
-- localhost vs 실제 도메인 불일치
-- http vs https 프로토콜 불일치
-- 서브도메인 차이 (www.example.com vs example.com)
-- 포트 번호 차이 (localhost:3000 vs localhost:3001)
+**원인**: `data.url`을 수동으로 사용하여 Supabase 내부 PKCE 관리 방해
 
 ## 🛠️ 테스트 방법
 

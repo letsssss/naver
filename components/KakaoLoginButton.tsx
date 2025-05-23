@@ -22,43 +22,6 @@ export default function KakaoLoginButton({
   // 버튼 텍스트 결정
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
-  const waitForCodeVerifierAndRedirect = async (url: string) => {
-    console.log("⏱️ [PKCE] code_verifier 저장 대기 시작");
-    const maxWait = 3000;
-    const interval = 100;
-    let waited = 0;
-
-    while (waited < maxWait) {
-      const verifier = localStorage.getItem('supabase.auth.code_verifier');
-      // ✅ ③ waitForCodeVerifierAndRedirect() 내부 루프 - 정밀 디버깅
-      console.log(`🕒 [PKCE 체크] ${waited}ms 경과 - code_verifier:`, verifier);
-      console.log(`🔍 [PKCE 체크] ${waited}ms - localStorage 전체 키:`, Object.keys(localStorage));
-      
-      // Supabase 관련 키들도 모두 확인
-      const supabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
-      if (supabaseKeys.length > 0) {
-        console.log(`🔍 [PKCE 체크] ${waited}ms - supabase 관련 키들:`, supabaseKeys);
-        supabaseKeys.forEach(k => {
-          const value = localStorage.getItem(k);
-          console.log(`  🔑 ${k}:`, value ? `${value.substring(0, 20)}...` : 'null');
-        });
-      }
-      
-      if (verifier) {
-        console.log("✅ [PKCE] code_verifier 최종 확인됨:", verifier);
-        console.log("🚀 [PKCE] 카카오 인증 페이지로 리디렉션 시작");
-        window.location.href = url;
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, interval));
-      waited += interval;
-    }
-
-    console.warn("⚠️ [PKCE] code_verifier가 3초 내 저장되지 않음 → 그래도 리디렉션");
-    console.log("🔍 [타임아웃] 최종 localStorage 상태:", Object.keys(localStorage));
-    window.location.href = url;
-  };
-
   const handleKakaoAuth = async () => {
     try {
       setIsLoading(true);
@@ -129,14 +92,21 @@ export default function KakaoLoginButton({
         console.log(`  🔑 [OAuth 직전] ${k}:`, localStorage.getItem(k));
       });
       
-      // 카카오 OAuth 요청 - redirectTo 추가
+      // 카카오 인증 모드 저장 (리디렉션 전에)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('kakao_auth_mode', mode);
+        console.log("💾 [OAuth] 인증 모드 저장:", mode);
+      }
+      
+      // ✅ 카카오 OAuth 요청 - Supabase가 자동으로 리디렉션 처리
+      console.log("🚀 [CRITICAL] Supabase 자동 리디렉션 시작");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
           redirectTo: redirectTo,
-          scopes: 'profile_nickname profile_image account_email', // email 스코프 추가
+          scopes: 'profile_nickname profile_image account_email',
           queryParams: {
-            'single_account': 'true' // 하나의 계정만 허용하도록 플래그 추가
+            'single_account': 'true'
           }
         }
       });
@@ -146,7 +116,6 @@ export default function KakaoLoginButton({
       console.log("❗ [OAuth 결과] error:", error);
       console.log("📦 [OAuth 직후] localStorage 상태:", JSON.stringify(localStorage));
       console.log("🧪 [OAuth 이후] code_verifier 상태:", localStorage.getItem('supabase.auth.code_verifier'));
-      console.log("🌐 리디렉션 예정 URL:", data?.url);
       
       // OAuth 직후 모든 supabase 키 재확인
       const postOAuthSupabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
@@ -156,47 +125,27 @@ export default function KakaoLoginButton({
       });
 
       if (error) {
-        console.error('카카오 인증 에러:', error.message);
+        console.error('❌ [OAuth 오류]:', error.message);
         toast.error('카카오 인증 중 오류가 발생했습니다.');
         return;
       }
 
+      // ✅ 중요: data.url을 수동으로 사용하지 않음!
+      // Supabase가 자동으로 리디렉션을 처리합니다.
       if (data?.url) {
-        // 리디렉션 URL 상세 로그
-        console.log("🌐 [DEBUG] redirect 예정 URL:", data.url);
-        console.log('카카오 인증 페이지로 리디렉션:', data.url);
-        
-        // 카카오 인증 페이지로 리디렉션하기 전에 로컬 스토리지에 모드 저장
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('kakao_auth_mode', mode);
-          
-          // PKCE 디버깅을 위한 확인 로그
-          const allKeys = Object.keys(localStorage);
-          const pkceKeys = allKeys.filter(key => key.includes('code_verifier'));
-          console.log("✅ [PKCE 디버깅] localStorage 키:", allKeys);
-          console.log("✅ [PKCE 디버깅] code_verifier 키:", pkceKeys);
-          
-          // 리디렉션 직전 상태 확인
-          console.log("🧪 [DEBUG] 리디렉션 직전 localStorage 상태:");
-          Object.entries(localStorage).forEach(([key, val]) => {
-            if (key.includes('supabase') || key.includes('code_verifier')) {
-              console.log(`  🔑 ${key}:`, val);
-            }
-          });
-        }
-        
-        // ✅ 안정화된 리디렉션 방식으로 대체
-        await waitForCodeVerifierAndRedirect(data.url);
+        console.log("🌐 [INFO] Supabase가 생성한 OAuth URL:", data.url);
+        console.log("✅ [INFO] Supabase가 자동으로 리디렉션을 처리합니다.");
+        // ❌ window.location.href = data.url; // 이렇게 하면 안됨!
+        // ❌ await waitForCodeVerifierAndRedirect(data.url); // 이것도 안됨!
       } else {
-        console.error('카카오 인증 URL이 없습니다.');
-        toast.error('카카오 인증 처리 중 오류가 발생했습니다.');
+        console.warn("⚠️ [OAuth] URL이 생성되지 않았습니다.");
       }
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (err) {
-      console.error('인증 처리 중 오류 발생:', err);
+      console.error('❌ [OAuth 예외]:', err);
       toast.error('카카오 인증 처리 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
