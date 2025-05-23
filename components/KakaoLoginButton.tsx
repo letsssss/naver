@@ -19,12 +19,30 @@ export default function KakaoLoginButton({
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
   const signInWithKakao = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
     console.log('🔥 [TEST] 카카오 버튼 클릭됨!');
+    
     try {
-      setIsLoading(true);
       console.log('🚀 [KAKAO] 표준 OAuth 시작');
       console.log('🌐 [KAKAO] 현재 URL:', window.location.href);
-      console.log('🔗 [KAKAO] Redirect URL:', `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.easyticket82.com'}/auth/callback`);
+      
+      // 🔧 동적 redirectTo URL 생성
+      const getRedirectUrl = () => {
+        const currentOrigin = window.location.origin;
+        const isProduction = currentOrigin.includes('easyticket82.com');
+        
+        if (isProduction) {
+          return 'https://www.easyticket82.com/auth/callback';
+        } else {
+          // 개발 환경에서는 현재 도메인 사용
+          return `${currentOrigin}/auth/callback`;
+        }
+      };
+      
+      const redirectUrl = getRedirectUrl();
+      console.log('🔗 [KAKAO] Redirect URL:', redirectUrl);
       
       const supabase = createBrowserClient();
       console.log('✅ [KAKAO] Supabase 클라이언트 생성 완료');
@@ -33,7 +51,7 @@ export default function KakaoLoginButton({
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.easyticket82.com'}/auth/callback`,
+          redirectTo: redirectUrl,
         },
       });
 
