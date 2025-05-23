@@ -22,6 +22,9 @@ export default function KakaoLoginButton({
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
   const waitForCodeVerifierAndRedirect = (url: string, attempt = 0) => {
+    console.log("🔍 waitForCodeVerifierAndRedirect 시작");
+    console.log("🔍 현재 code_verifier 값:", localStorage.getItem('supabase.auth.code_verifier'));
+    
     const verifier = localStorage.getItem('supabase.auth.code_verifier');
     if (verifier) {
       console.log("✅ code_verifier 저장 확인됨 → 리디렉션 시작");
