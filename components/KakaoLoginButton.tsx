@@ -21,21 +21,24 @@ export default function KakaoLoginButton({
   // 버튼 텍스트 결정
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
-  const waitForCodeVerifierAndRedirect = (url: string, attempt = 0) => {
-    console.log("🔍 waitForCodeVerifierAndRedirect 시작");
-    console.log("🔍 현재 code_verifier 값:", localStorage.getItem('supabase.auth.code_verifier'));
-    
-    const verifier = localStorage.getItem('supabase.auth.code_verifier');
-    if (verifier) {
-      console.log("✅ code_verifier 저장 확인됨 → 리디렉션 시작");
-      window.location.href = url;
-    } else if (attempt < 10) {
-      console.warn(`⏳ code_verifier 아직 없음 → ${200 * (attempt + 1)}ms 후 재시도`);
-      setTimeout(() => waitForCodeVerifierAndRedirect(url, attempt + 1), 200);
-    } else {
-      console.error("❌ code_verifier 저장 실패 → 강제 리디렉션 (안정성 저하 가능)");
-      window.location.href = url;
+  const waitForCodeVerifierAndRedirect = async (url: string) => {
+    const maxWait = 3000;
+    const interval = 100;
+    let waited = 0;
+
+    while (waited < maxWait) {
+      const verifier = localStorage.getItem('supabase.auth.code_verifier');
+      if (verifier) {
+        console.log("✅ [PKCE] code_verifier 저장 완료:", verifier);
+        window.location.href = url;
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, interval));
+      waited += interval;
     }
+
+    console.warn("⚠️ [PKCE] code_verifier가 3초 내 저장되지 않음 → 그래도 리디렉션");
+    window.location.href = url;
   };
 
   const handleKakaoAuth = async () => {
@@ -139,7 +142,7 @@ export default function KakaoLoginButton({
         }
         
         // ✅ 안정화된 리디렉션 방식으로 대체
-        waitForCodeVerifierAndRedirect(data.url);
+        await waitForCodeVerifierAndRedirect(data.url);
       } else {
         console.error('카카오 인증 URL이 없습니다.');
         toast.error('카카오 인증 처리 중 오류가 발생했습니다.');
