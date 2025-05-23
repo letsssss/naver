@@ -19,6 +19,7 @@ export default function KakaoLoginButton({
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
   const signInWithKakao = async () => {
+    console.log('🔥 [TEST] 카카오 버튼 클릭됨!');
     try {
       setIsLoading(true);
       console.log('🚀 [KAKAO] 표준 OAuth 시작');
@@ -38,6 +39,11 @@ export default function KakaoLoginButton({
 
       console.log('📊 [KAKAO] OAuth 응답 데이터:', data);
       console.log('📊 [KAKAO] OAuth 응답 오류:', error);
+      
+      if (data?.url) {
+        console.log('🔗 [KAKAO] 실제 리디렉션 URL:', data.url);
+        console.log('🔗 [KAKAO] URL 파싱:', new URL(data.url));
+      }
 
       if (error) {
         console.error('❌ [KAKAO] OAuth 오류:', error.message);
