@@ -14,14 +14,33 @@ export default function AuthCallbackPage() {
       const supabase = createBrowserClient();
       
       try {
-        const { error } = await supabase.auth.getSessionFromUrl();
+        // URL에서 인증 코드 추출
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
 
         if (error) {
-          console.error('❌ [CLIENT CALLBACK] 인증 실패:', error.message);
+          console.error('❌ [CLIENT CALLBACK] URL 오류:', error);
           router.push('/auth/auth-code-error');
+          return;
+        }
+
+        if (code) {
+          console.log('🔑 [CLIENT CALLBACK] 인증 코드 발견, 세션 교환 중...');
+          
+          // 인증 코드를 세션으로 교환
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (exchangeError) {
+            console.error('❌ [CLIENT CALLBACK] 세션 교환 실패:', exchangeError.message);
+            router.push('/auth/auth-code-error');
+          } else {
+            console.log('✅ [CLIENT CALLBACK] 인증 성공');
+            router.push('/');
+          }
         } else {
-          console.log('✅ [CLIENT CALLBACK] 인증 성공');
-          router.push('/');
+          console.error('❌ [CLIENT CALLBACK] 인증 코드가 없음');
+          router.push('/auth/auth-code-error');
         }
       } catch (err) {
         console.error('❌ [CLIENT CALLBACK] 예외 발생:', err);
