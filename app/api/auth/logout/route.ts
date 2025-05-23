@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { getTokenFromHeaders, verifyAccessToken } from "@/lib/auth"
+import { NextRequest } from 'next/server'
 
 // OPTIONS 메서드 처리
 export async function OPTIONS() {
@@ -14,9 +15,11 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     console.log("로그아웃 요청 수신");
+    
+    const supabase = getSupabaseClient();
     
     // 토큰 가져오기 시도
     const token = getTokenFromHeaders(request.headers);

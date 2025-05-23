@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 // 메시지 인터페이스 정의
@@ -61,6 +61,8 @@ export function useChat(options: ChatOptions | null = null): ChatReturn {
 
     setIsLoading(true);
     try {
+      const supabase = getSupabaseClient();
+      
       // @ts-ignore - messages 테이블이 타입 정의에 없으므로 타입 오류 무시
       const { data, error } = await supabase
         .from('messages')
@@ -101,7 +103,7 @@ export function useChat(options: ChatOptions | null = null): ChatReturn {
   useEffect(() => {
     if (!userId || !transactionId) return;
 
-    const channel = supabase
+    const channel = getSupabaseClient()
       .channel(`transaction-${transactionId}`)
       .on('postgres_changes', {
         event: 'INSERT', 
@@ -184,6 +186,8 @@ export function useChat(options: ChatOptions | null = null): ChatReturn {
     setMessages(prev => [...prev, newMessage]);
 
     try {
+      const supabase = getSupabaseClient();
+      
       // UUID 형식으로 변환하는 함수
       const ensureUUID = (id: string | number): string => {
         if (typeof id === 'string' && id.includes('-')) {
@@ -281,6 +285,8 @@ export function useChat(options: ChatOptions | null = null): ChatReturn {
     if (unreadMessages.length === 0) return true;
 
     try {
+      const supabase = getSupabaseClient();
+      
       // @ts-ignore - messages 테이블이 타입 정의에 없으므로 타입 오류 무시
       const { error } = await supabase
         .from('messages')

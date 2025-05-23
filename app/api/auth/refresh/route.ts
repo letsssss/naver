@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { getTokenFromHeaders, verifyAccessToken, generateAccessToken } from "@/lib/auth";
-import { supabase } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/lib/supabase';
+import { generateAccessToken, verifyRefreshToken, getTokenFromHeaders, verifyAccessToken } from '@/lib/auth';
 
 // OPTIONS 메서드 처리
 export async function OPTIONS() {
@@ -14,9 +14,11 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     console.log("토큰 갱신 요청 수신");
+    
+    const supabase = getSupabaseClient();
     
     // 토큰 가져오기 시도
     const token = getTokenFromHeaders(request.headers);

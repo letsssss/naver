@@ -12,16 +12,18 @@ import Link from 'next/link';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 export default function RealTimeNotifications() {
-  const { 
-    notifications, 
-    messages, 
-    loading, 
-    error, 
-    refreshNotifications, 
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    supabaseAvailable
-  } = useRealtime();
+  // useRealtime 훅을 null 파라미터로 호출 (임시로 비활성화)
+  useRealtime(null);
+  
+  // 임시로 빈 상태 반환
+  const notifications: any[] = [];
+  const messages: any[] = [];
+  const loading = false;
+  const error = null;
+  const refreshNotifications = () => {};
+  const markNotificationAsRead = (id: number) => {};
+  const markAllNotificationsAsRead = () => {};
+  const supabaseAvailable = false;
   
   // 마지막으로 표시한 알림 ID 추적 (중복 토스트 방지)
   const [lastShownNotificationId, setLastShownNotificationId] = useState<number | null>(null);
@@ -187,10 +189,11 @@ export default function RealTimeNotifications() {
                 {!notification.isRead && (
                   <Button 
                     variant="ghost" 
+                    size="sm"
                     onClick={() => markNotificationAsRead(notification.id)}
-                    disabled={loading}
+                    className="text-xs"
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3 w-3" />
                   </Button>
                 )}
               </div>
@@ -200,4 +203,4 @@ export default function RealTimeNotifications() {
       )}
     </div>
   );
-} 
+}

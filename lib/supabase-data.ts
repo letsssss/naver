@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 // 게시글 목록 가져오기
 export async function getPosts(options: {
@@ -11,6 +11,8 @@ export async function getPosts(options: {
   try {
     const { page = 1, limit = 10, category, userId, searchQuery } = options;
     const offset = (page - 1) * limit;
+
+    const supabase = getSupabaseClient();
 
     let query = supabase
       .from('Post')
@@ -50,6 +52,7 @@ export async function getPosts(options: {
 // 게시글 상세 조회
 export async function getPostById(postId: string) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('Post')
       .select('*, author:User(id, name, email)')
@@ -78,6 +81,7 @@ export async function createPost(postData: {
   contactInfo?: string;
 }) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('Post')
       .insert([postData])
@@ -105,6 +109,7 @@ export async function updatePost(postId: string, postData: {
   status?: string;
 }) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('Post')
       .update(postData)
@@ -123,6 +128,7 @@ export async function updatePost(postId: string, postData: {
 // 게시글 삭제 (소프트 딜리트)
 export async function deletePost(postId: string) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('Post')
       .update({ isDeleted: true })
@@ -143,6 +149,8 @@ export async function getPurchases(userId: string, options: { page?: number; lim
   try {
     const { page = 1, limit = 10, status } = options;
     const offset = (page - 1) * limit;
+
+    const supabase = getSupabaseClient();
 
     let query = supabase
       .from('Purchase')
@@ -176,6 +184,8 @@ export async function getNotifications(userId: string, options: { page?: number;
   try {
     const { page = 1, limit = 10 } = options;
     const offset = (page - 1) * limit;
+
+    const supabase = getSupabaseClient();
 
     const { data, error, count } = await supabase
       .from('Notification')

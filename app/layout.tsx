@@ -7,7 +7,7 @@ import "./output.css"
 import { FeedbackForm } from "@/components/feedback-form"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "sonner"
-import { SyncUser } from "@/app/components/sync-user"
+import SyncUser from "@/app/components/sync-user"
 import TokenRefresher from '@/app/components/auth/TokenRefresher'
 import { Footer } from "@/components/Footer"
 import { ReviewSection } from "@/components/ReviewSection"

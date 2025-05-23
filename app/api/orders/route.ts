@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase"
 import { createUniqueOrderNumber } from "@/utils/orderNumber"
+import { verifyAccessToken, getTokenFromHeaders } from "@/lib/auth"
 
 // Prisma 클라이언트 인스턴스 생성
 // Prisma 클라이언트 제거됨, Supabase 사용
@@ -11,66 +12,95 @@ const orders = [
   { id: 2, userId: 2, ticketId: 2, quantity: 1, totalPrice: 99000, status: "completed" },
 ]
 
-export async function GET() {
-  return NextResponse.json(orders)
+export async function GET(request: NextRequest) {
+  try {
+    // 토큰 검증
+    const token = getTokenFromHeaders(request.headers)
+    if (!token) {
+      return NextResponse.json({ error: "인증 토큰이 필요합니다." }, { status: 401 })
+    }
+
+    const data = verifyAccessToken(token)
+    if (!data) {
+      return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 })
+    }
+
+    const supabase = getSupabaseClient()
+
+    // 사용자의 주문 목록 조회
+    const { data: orders, error } = await supabase
+      .from("purchases")
+      .select(`
+        *,
+        product:products (*)
+      `)
+      .eq("buyer_id", data.userId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("주문 목록 조회 오류:", error)
+      return NextResponse.json({ error: "주문 목록 조회 중 오류가 발생했습니다." }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      orders: orders || [],
+    })
+  } catch (error) {
+    console.error("주문 목록 조회 오류:", error)
+    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
+  }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await request.json()
-    
+    // 토큰 검증
+    const token = getTokenFromHeaders(request.headers)
+    if (!token) {
+      return NextResponse.json({ error: "인증 토큰이 필요합니다." }, { status: 401 })
+    }
+
+    const data = verifyAccessToken(token)
+    if (!data) {
+      return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 })
+    }
+
+    const { productId, quantity = 1 } = await request.json()
+
+    if (!productId) {
+      return NextResponse.json({ error: "상품 ID가 필요합니다." }, { status: 400 })
+    }
+
+    const supabase = getSupabaseClient()
+
     // 주문 번호 생성
-    const orderNumber = await createUniqueOrderNumber()
-    
+    const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
     // Supabase를 사용하여 데이터베이스에 주문 생성
     const { data: newOrder, error } = await supabase
       .from("purchases")
       .insert({
         order_number: orderNumber,
         buyer_id: data.userId,
-        seller_id: data.sellerId,
-        post_id: data.postId,
-        quantity: data.quantity || 1,
-        total_price: data.totalPrice,
-        status: data.status || "PENDING",
-        payment_method: data.paymentMethod,
-        selected_seats: data.selectedSeats,
-        phone_number: data.phoneNumber,
-        ticket_title: data.ticketTitle,
-        event_date: data.eventDate,
-        event_venue: data.eventVenue,
-        ticket_price: data.ticketPrice || null,
-        image_url: data.imageUrl,
+        product_id: productId,
+        quantity,
+        status: "pending",
+        total_amount: 0, // 실제로는 상품 가격 * 수량으로 계산해야 함
       })
       .select()
       .single()
-    
+
     if (error) {
-      throw error
+      console.error("주문 생성 오류:", error)
+      return NextResponse.json({ error: "주문 생성 중 오류가 발생했습니다." }, { status: 500 })
     }
-    
-    // 임시 데이터베이스 업데이트 (API 예제 호환성 유지)
-    const tempOrder = { ...data, id: orders.length + 1 }
-    orders.push(tempOrder)
-    
+
     return NextResponse.json({
-      success: true,
-      message: "주문이 성공적으로 생성되었습니다",
-      order: {
-        id: newOrder.id,
-        orderNumber: newOrder.order_number,
-        status: newOrder.status,
-        totalPrice: newOrder.total_price?.toString(),
-        ticketPrice: newOrder.ticket_price?.toString() ?? null,
-      }
-    }, { status: 201 })
-  } catch (error: any) {
-    console.error("주문 생성 오류:", error)
-    return NextResponse.json({ 
-      success: false, 
-      message: "주문 생성 중 오류가 발생했습니다",
-      error: error.message || "Unknown error"
-    }, { status: 500 })
+      message: "주문이 성공적으로 생성되었습니다.",
+      order: newOrder,
+    })
+  } catch (error) {
+    console.error("주문 처리 오류:", error)
+    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }
 

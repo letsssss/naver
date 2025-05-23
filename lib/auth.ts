@@ -5,7 +5,6 @@ import { JWT } from 'next-auth/jwt';
 import { getServerSession } from 'next-auth/next';
 import * as jsonwebtoken from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import supabase from '@/lib/supabase';
 import { getSupabaseClient } from '@/lib/supabase';
 import { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
@@ -16,6 +15,9 @@ import { Database } from '@/types/supabase.types';
 // @ts-ignore - 타입 에러 무시 (런타임에는 정상 작동)
 import { createClient } from '@supabase/supabase-js';
 import jwt from "jsonwebtoken";
+import bcrypt from 'bcryptjs';
+import { createServerSupabaseClient } from '@/lib/supabase';
+import { createTokenClient } from '@/lib/supabase';
 
 // 세션에 id 필드를 추가하기 위한 타입 확장
 declare module "next-auth" {
@@ -133,7 +135,7 @@ export async function verifyToken(token: string): Promise<any> {
   try {
     // 1. Supabase JWT 검증 시도
     try {
-      const { data, error } = await supabase.auth.getUser(token);
+      const { data, error } = await getSupabaseClient().auth.getUser(token);
       
       if (!error && data.user) {
         return {
@@ -156,7 +158,7 @@ export async function verifyToken(token: string): Promise<any> {
       
       // 개발 환경에서 Supabase 세션 확인
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await getSupabaseClient().auth.getSession();
         if (!error && session && session.user) {
           console.log('개발 환경: Supabase 세션에서 실제 사용자 ID 사용');
           return {
@@ -342,7 +344,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
       // 마지막 대안: 세션 확인
       try {
         console.log("[getAuthenticatedUser] 세션 확인 시도");
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await getSupabaseClient().auth.getSession();
         
         if (!sessionError && session?.user) {
           console.log("[getAuthenticatedUser] 세션에서 사용자 발견:", session.user.id);
@@ -361,7 +363,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
     console.log("[getAuthenticatedUser] 토큰 발견:", token.substring(0, 15) + "...");
     
     // 2. 기존 Supabase 클라이언트에 토큰 직접 전달
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { data: { user }, error } = await getSupabaseClient().auth.getUser(token);
     
     if (error) {
       console.error("[getAuthenticatedUser] ❌ 사용자 인증 실패:", error.message);
@@ -426,7 +428,7 @@ export async function validateRequestToken(req: Request | NextRequest): Promise<
 
     try {
       // 1. Supabase 토큰 검증 시도
-      const { data: { user }, error: supabaseError } = await supabase.auth.getUser(token);
+      const { data: { user }, error: supabaseError } = await getSupabaseClient().auth.getUser(token);
       
       if (!supabaseError && user) {
         console.log('Supabase 토큰 검증 성공:', user.id);
@@ -452,7 +454,7 @@ export async function validateRequestToken(req: Request | NextRequest): Promise<
     // 3. 개발 환경에서 추가 검증
     if (isDevelopment) {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await getSupabaseClient().auth.getSession();
         if (!error && session?.user) {
           console.log('개발 환경: 세션에서 사용자 ID 사용:', session.user.id);
           return {

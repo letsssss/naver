@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { verifyToken } from '@/lib/auth';
+import { getSupabaseClient } from '@/lib/supabase';
+import { verifyAccessToken, getTokenFromHeaders } from '@/lib/auth';
 
 // 메시지 읽음 상태 조회 API 핸들러
 export async function GET(request: NextRequest) {
@@ -10,16 +10,15 @@ export async function GET(request: NextRequest) {
     const messageId = searchParams.get('messageId');
     
     // 인증 토큰 검증
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = getTokenFromHeaders(request.headers);
+    if (!token) {
       return NextResponse.json(
         { error: '인증되지 않은 요청입니다.' },
         { status: 401 }
       );
     }
     
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
+    const decoded = verifyAccessToken(token);
     
     if (!decoded || typeof decoded !== 'object' || !('userId' in decoded)) {
       return NextResponse.json(
@@ -39,6 +38,8 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         );
       }
+      
+      const supabase = getSupabaseClient();
       
       const { data: message, error: messageError } = await supabase
         .from('messages')
@@ -82,6 +83,7 @@ export async function GET(request: NextRequest) {
     // 채팅방 ID가 제공된 경우
     if (roomId) {
       // roomId를 방 이름으로 사용하는 경우
+      const supabase = getSupabaseClient();
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .select('*')
@@ -175,5 +177,73 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // 토큰 검증
+    const token = getTokenFromHeaders(request.headers);
+    if (!token) {
+      return NextResponse.json({ error: "인증 토큰이 필요합니다." }, { status: 401 });
+    }
+
+    const decoded = verifyAccessToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
+    }
+
+    const { messageId } = await request.json();
+
+    if (!messageId) {
+      return NextResponse.json({ error: "메시지 ID가 필요합니다." }, { status: 400 });
+    }
+
+    const messageIdInt = parseInt(messageId, 10);
+    if (isNaN(messageIdInt)) {
+      return NextResponse.json({ error: "유효하지 않은 메시지 ID입니다." }, { status: 400 });
+    }
+
+    const supabase = getSupabaseClient();
+
+    // 메시지 존재 확인
+    const { data: message, error: messageError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('id', messageIdInt)
+      .maybeSingle();
+
+    if (messageError) {
+      console.error("메시지 조회 오류:", messageError);
+      return NextResponse.json({ error: "메시지 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!message) {
+      return NextResponse.json({ error: "메시지를 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    // 읽음 상태 업데이트 또는 생성
+    const { data: readStatus, error: readError } = await supabase
+      .from('message_read_status')
+      .upsert({
+        message_id: messageIdInt,
+        user_id: decoded.userId,
+        read_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (readError) {
+      console.error("읽음 상태 업데이트 오류:", readError);
+      return NextResponse.json({ error: "읽음 상태 업데이트 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      message: "읽음 상태가 업데이트되었습니다.",
+      readStatus 
+    });
+  } catch (error) {
+    console.error("읽음 상태 업데이트 오류:", error);
+    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 } 

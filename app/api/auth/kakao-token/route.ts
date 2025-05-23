@@ -1,25 +1,17 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
 import { generateAccessToken, hashPassword } from '@/lib/auth';
 import crypto from 'crypto';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { supabaseUserId, email } = await req.json();
-
-    if (!supabaseUserId || !email) {
-      return NextResponse.json(
-        { error: '필수 파라미터가 누락되었습니다.' },
-        { 
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          }
-        }
-      );
+    const { email, name, profileImage } = await request.json();
+    
+    if (!email) {
+      return NextResponse.json({ error: '이메일이 필요합니다.' }, { status: 400 });
     }
+
+    const supabase = getSupabaseClient();
 
     // ✅ 1. Supabase에서 사용자 조회
     let { data: user, error } = await supabase

@@ -12,8 +12,10 @@ declare global {
   var memoryUsers: MemoryUser[] | undefined;
 }
 
-import { NextResponse } from "next/server";
-import { supabase } from '@/lib/supabase';
+import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { getSupabaseClient } from '@/lib/supabase';
+import { generateAccessToken } from "@/lib/auth";
 import { logAuthEventWithRequest } from '@/lib/auth-logger';
 
 // 이메일 유효성 검사 함수
@@ -34,11 +36,19 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // 요청 본문 파싱
     const { email, password, name } = await request.json();
-    
+
+    if (!email || !password || !name) {
+      return NextResponse.json(
+        { error: "모든 필드를 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
     // 기본 유효성 검사
     if (!email || !password || !name) {
       await logAuthEventWithRequest(request, "signup", email || "unknown", "fail", "필수 입력값 누락");

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { generateAccessToken } from "@/lib/auth";
 
 // OPTIONS 메서드 처리
@@ -17,6 +17,9 @@ export async function OPTIONS() {
 export async function GET(request: Request) {
   try {
     console.log("Supabase 세션 확인 요청 수신");
+    
+    // Supabase 클라이언트 가져오기
+    const supabase = getSupabaseClient();
     
     // Supabase 세션 확인
     const { data: { session } } = await supabase.auth.getSession();

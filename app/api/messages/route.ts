@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // 메시지 API 핸들러
 export async function POST(request: NextRequest) {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // 1️⃣ 구매 ID로 채팅방 조회 or 생성
     if (purchaseId) {
-      const purchaseRes = await supabase
+      const purchaseRes = await getSupabaseClient()
         .from('purchases')
         .select('id, buyer_id, seller_id')
         .eq(typeof purchaseId === 'number' ? 'id' : 'order_number', purchaseId)
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
       const { id: purchase_id, buyer_id, seller_id } = purchaseRes.data;
 
-      const roomRes = await supabase
+      const roomRes = await getSupabaseClient()
         .from('rooms')
         .select('id')
         .eq('purchase_id', purchase_id)
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 
       // 없으면 생성
       if (!roomRes.data) {
-        const createRoom = await supabase
+        const createRoom = await getSupabaseClient()
           .from('rooms')
           .insert({ name: `purchase_${purchase_id}`, purchase_id })
           .select()
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
         roomId = createRoom.data.id;
 
         // 참여자 등록
-        await supabase.from('room_participants').insert([
+        await getSupabaseClient().from('room_participants').insert([
           { room_id: roomId, user_id: buyer_id },
           { room_id: roomId, user_id: seller_id },
         ]);
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2️⃣ 메시지 저장
-    const messageInsert = await supabase
+    const messageInsert = await getSupabaseClient()
       .schema('public')
       .from('messages')
       .insert({
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     // 3️⃣ 채팅방 최신 정보 업데이트
     if (roomId) {
-      await supabase
+      await getSupabaseClient()
         .from('rooms')
         .update({ last_chat: content, time_of_last_chat: new Date().toISOString() })
         .eq('id', roomId);
@@ -130,32 +131,19 @@ export async function POST(request: NextRequest) {
 // 메시지 조회 핸들러
 export async function GET(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser(request);
+    
+    if (!user) {
+      return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 });
+    }
+
+    const supabase = getSupabaseClient();
+
     const searchParams = request.nextUrl.searchParams;
     const roomId = searchParams.get('roomId');
     const purchaseId = searchParams.get('purchaseId');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-    
-    // 인증 토큰 검증
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: '인증되지 않은 요청입니다.' },
-        { status: 401 }
-      );
-    }
-    
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
-    
-    if (!decoded || typeof decoded !== 'object' || !('userId' in decoded)) {
-      return NextResponse.json(
-        { error: '유효하지 않은 토큰입니다.' },
-        { status: 401 }
-      );
-    }
-    
-    const userId = parseInt(decoded.userId.toString());
     
     // 방 ID 또는 구매 ID로 메시지 조회
     if (roomId) {
@@ -168,22 +156,22 @@ export async function GET(request: NextRequest) {
       }
       
       // 사용자가 해당 채팅방의 참여자인지 확인
-      const { data: participant, error: participantError } = await supabase
+      const participantCheck = await supabase
         .from('room_participants')
         .select('id')
         .eq('room_id', roomIdInt)
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .maybeSingle();
       
-      if (participantError) {
-        console.error('참여자 확인 오류:', participantError);
+      if (participantCheck.error) {
+        console.error('참여자 확인 오류:', participantCheck.error);
         return NextResponse.json(
           { error: '채팅방 접근 권한 확인 중 오류가 발생했습니다.' },
           { status: 500 }
         );
       }
       
-      if (!participant) {
+      if (!participantCheck) {
         return NextResponse.json(
           { error: '채팅방에 접근할 권한이 없습니다.' },
           { status: 403 }
@@ -217,7 +205,7 @@ export async function GET(request: NextRequest) {
       
       // 읽지 않은 메시지 업데이트
       const unreadMessageIds = messages
-        ?.filter(msg => msg.sender_id !== userId && !msg.is_read)
+        ?.filter(msg => msg.sender_id !== user.id && !msg.is_read)
         .map(msg => msg.id) || [];
       
       if (unreadMessageIds.length > 0) {
@@ -291,7 +279,7 @@ export async function GET(request: NextRequest) {
       }
       
       // 사용자가 해당 구매의 구매자 또는 판매자인지 확인
-      if (purchaseData.buyer_id !== userId && purchaseData.seller_id !== userId) {
+      if (purchaseData.buyer_id !== user.id && purchaseData.seller_id !== user.id) {
         return NextResponse.json(
           { error: '해당 거래에 접근할 권한이 없습니다.' },
           { status: 403 }

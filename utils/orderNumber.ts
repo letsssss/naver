@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 
 export async function createUniqueOrderNumber(): Promise<string> {
   const generateCode = () => {
@@ -13,6 +13,7 @@ export async function createUniqueOrderNumber(): Promise<string> {
   while (true) {
     const newCode = generateCode()
     
+    const supabase = getSupabaseClient();
     const { data: existing, error } = await supabase
       .from('purchases')
       .select('id')

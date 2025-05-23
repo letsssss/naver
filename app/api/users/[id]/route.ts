@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { getAuthenticatedUser } from "@/lib/auth";
 
 // CORS 헤더 추가 함수
@@ -16,6 +16,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = getSupabaseClient();
     const id = await params.id;
     console.log(`사용자 정보 조회 API 호출됨 - ID: ${id}`);
     

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { comparePassword, generateAccessToken, generateRefreshToken } from "@/lib/auth"
 import jwt from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase"
 
 // JWT 시크릿 키 정의
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -32,13 +32,18 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: "이메일과 비밀번호는 필수 입력값입니다." }, { status: 400 })
+      return NextResponse.json(
+        { error: "이메일과 비밀번호를 입력해주세요." },
+        { status: 400 }
+      );
     }
+
+    const supabase = getSupabaseClient();
 
     try {
       // Supabase 클라이언트 검증

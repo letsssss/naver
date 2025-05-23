@@ -1,4 +1,17 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
+
+export type AuthLogType = 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'TOKEN_REFRESH' | 'PASSWORD_RESET';
+export type AuthLogStatus = 'SUCCESS' | 'FAILURE' | 'ERROR';
+
+export interface AuthLogData {
+  type: AuthLogType;
+  email?: string;
+  status: AuthLogStatus;
+  message?: string;
+  ip_address?: string;
+  user_agent?: string;
+  metadata?: Record<string, any>;
+}
 
 /**
  * 인증 관련 이벤트를 로그로 기록하는 유틸리티 함수
@@ -10,30 +23,30 @@ import { supabase } from './supabase';
  * @param userAgent 브라우저/디바이스 정보 (옵션)
  */
 export async function logAuthEvent(
-  type: string, 
-  email: string, 
-  status: string, 
-  errorMessage: string | null = null,
-  ip?: string,
-  userAgent?: string
+  type: AuthLogType,
+  email: string | undefined,
+  status: AuthLogStatus,
+  message?: string,
+  metadata?: Record<string, any>
 ) {
   try {
+    const supabase = getSupabaseClient();
     const { error } = await supabase.from("auth_logs").insert({
       type,
       email,
       status,
-      error_message: errorMessage,
-      ip_address: ip || null,
-      user_agent: userAgent || null
+      message,
+      metadata,
+      created_at: new Date().toISOString()
     });
-    
+
     if (error) {
-      console.error("인증 로그 기록 실패:", error);
+      console.error('인증 로그 저장 실패:', error);
     } else {
       console.log(`인증 로그 기록 성공 - ${type}:${status} (${email})`);
     }
-  } catch (logError) {
-    console.error("로그 기록 중 오류 발생:", logError);
+  } catch (err) {
+    console.error('인증 로그 저장 중 오류:', err);
   }
 }
 
@@ -84,5 +97,5 @@ export async function logAuthEventWithRequest(
   const ip = getClientIP(request);
   const userAgent = getUserAgent(request);
   
-  await logAuthEvent(type, email, status, errorMessage, ip, userAgent);
+  await logAuthEvent(type as AuthLogType, email, status as AuthLogStatus, errorMessage, { ip, userAgent });
 } 

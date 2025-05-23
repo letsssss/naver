@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
-import { supabase } from '@/lib/supabase';
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseClient } from '@/lib/supabase';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // OPTIONS 메서드 처리
 export async function OPTIONS() {
@@ -13,12 +14,15 @@ export async function OPTIONS() {
   });
 }
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const mode = url.searchParams.get('mode') || 'all';
-  const reset = url.searchParams.get('reset') === 'true';
-  
+export async function GET(request: NextRequest) {
   try {
+    console.log("🔍 [DEBUG] 인증 상태 디버깅 시작");
+    
+    const supabase = getSupabaseClient();
+    const url = new URL(request.url);
+    const mode = url.searchParams.get('mode') || 'all';
+    const reset = url.searchParams.get('reset') === 'true';
+  
     // 개발 환경 인증 초기화 요청 처리
     if (reset && process.env.NODE_ENV === 'development') {
       // 응답 객체 생성

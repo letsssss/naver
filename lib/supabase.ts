@@ -33,6 +33,21 @@ export function createBrowserClient(): SupabaseClient<Database> {
     return createLegacyServerClient();
   }
   
+  // 환경 변수가 없는 경우 더미 클라이언트 반환
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.warn('[Supabase] 브라우저에서 환경 변수가 설정되지 않았습니다. 더미 클라이언트를 반환합니다.');
+    return createClient<Database>(
+      'https://dummy.supabase.co',
+      'dummy-key',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+  }
+  
   // ✅ 이미 생성된 인스턴스가 있으면 재사용 (중복 생성 방지)
   if (browserClientInstance) {
     console.log('🔄 기존 브라우저 클라이언트 인스턴스 재사용');
@@ -132,6 +147,22 @@ const supabase = typeof window === 'undefined'
  * 싱글톤 패턴으로 중복 인스턴스 생성을 방지합니다.
  */
 export function getSupabaseClient(): SupabaseClient<Database> {
+  // 환경 변수가 없는 경우 (빌드 시간 등) 더미 클라이언트 반환
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.warn('[Supabase] 환경 변수가 설정되지 않았습니다. 더미 클라이언트를 반환합니다.');
+    // 더미 클라이언트 생성 (빌드 시간에 사용)
+    return createClient<Database>(
+      'https://dummy.supabase.co',
+      'dummy-key',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+  }
+
   // 브라우저 환경에서는 createBrowserClient 사용 (싱글톤)
   if (typeof window !== 'undefined') {
     return createBrowserClient();

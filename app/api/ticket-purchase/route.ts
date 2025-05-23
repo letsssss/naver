@@ -2,7 +2,8 @@ import { NextResponse, NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { z } from "zod";
 import { convertBigIntToString } from "@/lib/utils";
-import { adminSupabase, supabase } from "@/lib/supabase";
+import { adminSupabase, getSupabaseClient } from "@/lib/supabase";
+import { createUniqueOrderNumber } from '@/utils/orderNumber';
 
 // CORS 헤더 설정을 위한 함수
 function addCorsHeaders(response: NextResponse) {
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
     if (!authUser) {
       // 직접 세션 확인
       try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await getSupabaseClient().auth.getSession();
         if (!sessionError && sessionData.session?.user) {
           console.log("세션은 존재하지만 getAuthenticatedUser에서 인식하지 못함:", 
             sessionData.session.user.id);
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
         if (!authUser && authHeader.startsWith('Bearer ')) {
           const token = authHeader.substring(7);
           try {
-            const { data, error } = await supabase.auth.getUser(token);
+            const { data, error } = await getSupabaseClient().auth.getUser(token);
             if (!error && data.user) {
               console.log("Authorization 헤더에서 사용자 인증 성공:", data.user.id);
               authUser = data.user;

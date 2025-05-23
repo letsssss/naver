@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
-import { supabase, getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { Database } from "@/types/supabase.types";
 
 // 사용자 데이터 타입 정의
@@ -376,7 +376,7 @@ export async function GET(request: NextRequest) {
     try {
       // 1. 먼저 posts 테이블 구조 확인
       console.log("1. posts 테이블 구조 확인 중...");
-      const { data: tableInfo, error: tableError } = await supabase
+      const { data: tableInfo, error: tableError } = await getSupabaseClient()
         .from('posts')
         .select('*')
         .limit(1);
@@ -405,7 +405,7 @@ export async function GET(request: NextRequest) {
       console.log("필드 확인: author_id=", hasAuthorIdField, "user_id=", hasUserIdField, "is_deleted=", hasIsDeletedField);
       
       // 쿼리 기본 준비
-      let query = supabase.from('posts').select('id');
+      let query = getSupabaseClient().from('posts').select('id');
       
       // 적절한 ID 필드 사용
       if (hasAuthorIdField) {
@@ -452,7 +452,7 @@ export async function GET(request: NextRequest) {
       
       // 3. purchases 테이블 구조 확인
       console.log("3. purchases 테이블 구조 확인 중...");
-      const { data: purchaseInfo, error: purchaseTableError } = await supabase
+      const { data: purchaseInfo, error: purchaseTableError } = await getSupabaseClient()
         .from('purchases')
         .select('*')
         .limit(1);
@@ -482,7 +482,7 @@ export async function GET(request: NextRequest) {
       console.log("4. 판매자 구매 목록 조회 중...");
       
       // 안전한 쿼리 작성
-      let purchasesQuery = supabase.from('purchases').select(`
+      let purchasesQuery = getSupabaseClient().from('purchases').select(`
         *,
         post:posts(*),
         buyer:users!purchases_buyer_id_fkey(*)

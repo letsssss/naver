@@ -11,7 +11,7 @@ import Link from "next/link"
 import { ArrowLeft, X } from 'lucide-react'
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import supabase from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase"
 import { checkUnpaidFees } from '@/lib/fee-utils'
 import { UnpaidFeesNotice } from './UnpaidFeesNotice'
 
@@ -552,7 +552,7 @@ export default function SellPage() {
       console.log("제출할 판매 데이터:", saleData)
 
       // ✅ Supabase 세션에서 직접 토큰 가져오기
-      const { data: sessionData } = await supabase.auth.getSession()
+      const { data: sessionData } = await getSupabaseClient().auth.getSession()
       const token = sessionData.session?.access_token
 
       if (!token) {

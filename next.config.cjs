@@ -1,31 +1,58 @@
 // CommonJS 모듈에서 dotenv 사용
-require('dotenv').config(); // 환경변수 로딩
+require('dotenv').config({ path: '.env.local' }); // 환경변수 로딩
 
 // 환경 변수 디버깅
-console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ 설정됨' : '❌ 설정안됨');
-console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ 설정됨' : '❌ 설정안됨');
+console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not set');
+console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not set');
 
-// 로컬 환경 변수를 하드코딩으로 설정 (개발 환경용, 실제 배포에서는 제거해야 함)
+// 환경 변수가 없으면 로컬 개발용 하드코딩된 값 사용
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://jdubrjczdyqqtsppojgu.supabase.co';
-  console.log('환경 변수 누락: NEXT_PUBLIC_SUPABASE_URL 하드코딩 값으로 설정됨');
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://jdubrjcqjqvjqjqjqjqj.supabase.co';
 }
-
 if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkdWJyamN6ZHlxcXRzcHBvamd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNTE5NzcsImV4cCI6MjA1ODYyNzk3N30.rnmejhT40bzQ2sFl-XbBrme_eSLnxNBGe2SSt-R_3Ww';
-  console.log('환경 변수 누락: NEXT_PUBLIC_SUPABASE_ANON_KEY 하드코딩 값으로 설정됨');
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkdWJyamNxanF2anFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MjU0NzQsImV4cCI6MjA1MDAwMTQ3NH0.dummy-key-for-local-development';
 }
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  trailingSlash: true,
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    JWT_SECRET: process.env.JWT_SECRET,
-    DATABASE_URL: process.env.DATABASE_URL,
+    KAKAO_REST_API_KEY: process.env.KAKAO_REST_API_KEY,
+    KAKAO_ADMIN_KEY: process.env.KAKAO_ADMIN_KEY,
+    KAKAO_JAVASCRIPT_KEY: process.env.KAKAO_JAVASCRIPT_KEY,
+    KAKAO_NATIVE_APP_KEY: process.env.KAKAO_NATIVE_APP_KEY,
+    KAKAO_CLIENT_SECRET: process.env.KAKAO_CLIENT_SECRET,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    INICIS_MID: process.env.INICIS_MID,
+    INICIS_SIGNKEY: process.env.INICIS_SIGNKEY,
+    INICIS_API_KEY: process.env.INICIS_API_KEY,
+    INICIS_IV: process.env.INICIS_IV,
+    NEXT_PUBLIC_INICIS_MID: process.env.NEXT_PUBLIC_INICIS_MID,
+    NEXT_PUBLIC_INICIS_API_KEY: process.env.NEXT_PUBLIC_INICIS_API_KEY,
+    NEXT_PUBLIC_KAKAO_REST_API_KEY: process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY,
+    NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY: process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY,
+    NEXT_PUBLIC_KAKAO_NATIVE_APP_KEY: process.env.NEXT_PUBLIC_KAKAO_NATIVE_APP_KEY,
+    NEXT_PUBLIC_KAKAO_CLIENT_SECRET: process.env.NEXT_PUBLIC_KAKAO_CLIENT_SECRET,
+    NEXT_PUBLIC_KAKAO_ADMIN_KEY: process.env.NEXT_PUBLIC_KAKAO_ADMIN_KEY,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_VERCEL_URL: process.env.NEXT_PUBLIC_VERCEL_URL,
+    NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_MESSAGE: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_MESSAGE,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_AUTHOR_NAME: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_AUTHOR_NAME,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_AUTHOR_LOGIN: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_AUTHOR_LOGIN,
+    NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG: process.env.NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG,
+    NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER: process.env.NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER,
+    NEXT_PUBLIC_VERCEL_GIT_REPO_ID: process.env.NEXT_PUBLIC_VERCEL_GIT_REPO_ID,
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
+    NEXT_PUBLIC_VERCEL_BRANCH_URL: process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL,
+    NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL,
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -37,10 +64,8 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-  }
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+  },
 };
 
 function mergeConfig(nextConfig, userConfig) {
