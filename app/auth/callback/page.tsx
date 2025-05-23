@@ -1,17 +1,57 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import type { Database } from '@/types/supabase.types';
+import { logDomainInfo, logDomainComparison } from '../../../utils/domain-debug';
 
 export default function AuthCallback() {
   const router = useRouter();
   
   useEffect(() => {
-    const handleCallback = async () => {
+    const handleAuthCallback = async () => {
+      // ✅ ④ 콜백 페이지 진입 시점 - 정밀 디버깅
+      console.log("🎯 [콜백 페이지] 진입 시작");
+      
+      // 도메인 정보 확인
+      logDomainInfo('[AUTH CALLBACK]');
+      
+      // 예상 도메인과 비교
+      logDomainComparison('https://www.easyticket82.com', '[AUTH CALLBACK]');
+      
       try {
         // ✅ ④ Callback 페이지 진입 시 - 정밀 디버깅
         console.log("📥 [Callback] 페이지 진입");
+        
+        // 🔍 콜백 페이지 도메인 정보 확인
+        if (typeof window !== 'undefined') {
+          console.log("🔍 [Callback] 현재 도메인 정보:");
+          console.log("🌐 [Callback] 전체 URL:", window.location.href);
+          console.log("🔑 [Callback] 프로토콜:", window.location.protocol);
+          console.log("📍 [Callback] 호스트 (도메인:포트):", window.location.host);
+          console.log("🏠 [Callback] 호스트명 (도메인):", window.location.hostname);
+          console.log("📄 [Callback] 경로:", window.location.pathname);
+          console.log("🔗 [Callback] Origin:", window.location.origin);
+          
+          // 예상 도메인과 비교
+          const expectedOrigin = 'https://www.easyticket82.com';
+          const currentOrigin = window.location.origin;
+          
+          console.log("🔄 [Callback] 도메인 검증:");
+          console.log("  📤 [Callback] 현재 Origin:", currentOrigin);
+          console.log("  📥 [Callback] 예상 Origin:", expectedOrigin);
+          console.log("  ✅ [Callback] 도메인 일치:", currentOrigin === expectedOrigin ? "예" : "❌ 불일치!");
+          
+          if (currentOrigin !== expectedOrigin) {
+            console.warn("⚠️ [Callback 도메인 경고] 예상과 다른 도메인에서 실행 중!");
+            console.warn("⚠️ [Callback 도메인 경고] localStorage 접근에 문제가 있을 수 있습니다!");
+          }
+        }
+        
         console.log("📦 [Callback] localStorage 전체 키:", Object.keys(localStorage));
         console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase.auth.code_verifier'));
         
@@ -234,7 +274,7 @@ export default function AuthCallback() {
       }, 500);
     };
     
-    handleCallback();
+    handleAuthCallback();
   }, [router]);
   
   return (

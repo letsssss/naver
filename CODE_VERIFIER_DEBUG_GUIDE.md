@@ -5,6 +5,21 @@
 
 ## 🔧 추가된 디버깅 로그 단계
 
+### ✅ 0단계: 도메인 정보 확인 (신규 추가)
+```typescript
+console.log("🔍 현재 도메인 정보:");
+console.log("🌐 전체 URL:", window.location.href);
+console.log("🔑 프로토콜:", window.location.protocol);
+console.log("📍 호스트 (도메인:포트):", window.location.host);
+console.log("🏠 호스트명 (도메인):", window.location.hostname);
+console.log("🔗 Origin:", window.location.origin);
+```
+
+**확인 사항:**
+- 현재 실행 중인 도메인과 콜백 URL 도메인 일치 여부
+- localStorage 접근 권한 문제 가능성
+- 프로토콜 (http vs https) 일치 여부
+
 ### ✅ 1단계: signInWithOAuth() 호출 직전
 ```typescript
 console.log("🚀 [OAuth 시작] signInWithOAuth 호출 직전");
@@ -85,6 +100,19 @@ console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase
 
 **원인**: 네트워크 지연 또는 Supabase 비동기 처리 지연
 
+### 🔴 문제 케이스 D: 도메인 불일치 (신규 추가)
+1. **0단계**: 도메인 불일치 감지 ⚠️
+2. **1단계**: `code_verifier` 없음
+3. **2단계**: `code_verifier` 생성됨 ✅
+4. **3단계**: 정상 감지됨 ✅
+5. **4단계**: 콜백 페이지에서 사라짐 ❌ (다른 도메인)
+
+**원인**: 
+- localhost vs 실제 도메인 불일치
+- http vs https 프로토콜 불일치
+- 서브도메인 차이 (www.example.com vs example.com)
+- 포트 번호 차이 (localhost:3000 vs localhost:3001)
+
 ## 🛠️ 테스트 방법
 
 1. **브라우저 개발자 도구** 콘솔 열기
@@ -119,11 +147,83 @@ console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase
 - `interval` 감소 (100ms → 50ms)
 - 네트워크 상태 확인
 
+### Case D: 도메인 불일치 (신규 추가)
+- **개발 환경**: redirectTo를 `http://localhost:3000/auth/callback`로 변경
+- **프로토콜 통일**: http와 https 중 하나로 통일
+- **서브도메인 확인**: www 유무 일치시키기
+- **포트 번호 확인**: 개발 서버와 콜백 URL 포트 일치
+- **hosts 파일 설정**: 로컬에서 실제 도메인 테스트 시
+
+**도메인 불일치 해결 예시:**
+```typescript
+// 개발 환경용 동적 redirectTo 설정
+const isDev = window.location.hostname === 'localhost';
+const redirectTo = isDev 
+  ? `${window.location.origin}/auth/callback`
+  : 'https://www.easyticket82.com/auth/callback';
+```
+
 ## 📊 로그 분석 체크리스트
 
+- [ ] 0단계: 도메인 정보 및 일치 여부 확인 (신규)
 - [ ] 1단계: OAuth 시작 전 상태 확인
 - [ ] 2단계: OAuth 직후 code_verifier 생성 여부
 - [ ] 3단계: 대기 중 code_verifier 감지 시점
 - [ ] 4단계: 콜백 페이지에서 code_verifier 보존 여부
 - [ ] 에러 메시지나 예외 발생 여부
-- [ ] 네트워크 탭에서 OAuth 요청/응답 확인 
+- [ ] 네트워크 탭에서 OAuth 요청/응답 확인
+- [ ] 도메인/프로토콜 불일치 경고 메시지 확인 (신규)
+- [ ] localStorage 접근 권한 문제 여부 (신규)
+
+## 🛠️ 디버깅 도구
+
+### 도메인 디버깅 유틸리티 (`utils/domain-debug.ts`)
+
+PKCE 플로우에서 localStorage 손실 문제를 진단하기 위한 전용 유틸리티 함수들:
+
+```typescript
+import { logDomainInfo, logDomainComparison, getRedirectUrl } from '../utils/domain-debug';
+
+// 현재 도메인 정보 로깅
+logDomainInfo('[PREFIX]');
+
+// 도메인 비교 및 문제점 분석
+logDomainComparison('https://target-domain.com/callback', '[PREFIX]');
+
+// 환경에 맞는 redirectTo URL 자동 생성
+const redirectTo = getRedirectUrl('https://prod-domain.com/auth/callback');
+```
+
+**주요 기능:**
+- 🔍 현재 도메인 정보 상세 로깅 (protocol, host, origin 등)
+- 🔄 도메인 비교 및 불일치 문제 자동 감지
+- ⚠️ localStorage 손실 위험 경고
+- 🌐 개발/프로덕션 환경별 자동 URL 생성
+
+## 📊 디버깅 로그
+
+### Step 0: 도메인 정보 확인
+```
+🔍 [PREFIX] 현재 도메인 정보:
+🌐 [PREFIX] 전체 URL: https://example.com/page
+🔑 [PREFIX] 프로토콜: https:
+📍 [PREFIX] 호스트 (도메인:포트): example.com
+🏠 [PREFIX] 호스트명 (도메인): example.com
+📄 [PREFIX] 경로: /page
+🔗 [PREFIX] Origin: https://example.com
+
+🔄 [PREFIX] 도메인 비교:
+  📤 [PREFIX] 현재 Origin: https://localhost:3000
+  📥 [PREFIX] 대상 Origin: https://example.com
+  ✅ [PREFIX] 도메인 일치: ❌ 불일치!
+⚠️ [PREFIX] 도메인 불일치 문제:
+  - 호스트명 불일치: localhost vs example.com
+⚠️ [PREFIX] localStorage가 리디렉션 중 손실될 수 있습니다!
+```
+
+**확인 포인트:**
+- 현재 도메인과 콜백 URL 도메인이 일치하는지
+- localStorage 접근 권한 문제 가능성
+- 프로토콜 일관성 (http vs https)
+
+// ... existing code ... 

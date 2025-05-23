@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
+import { createPagesBrowserClient, createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import type { Database } from '@/types/supabase.types';
 import { toast } from 'sonner';
+import { logDomainInfo, logDomainComparison, getRedirectUrl } from '../utils/domain-debug';
 
 type KakaoLoginButtonProps = {
   mode?: 'login' | 'signup'; // 'login' 또는 'signup' 모드 선택
@@ -62,8 +63,17 @@ export default function KakaoLoginButton({
     try {
       setIsLoading(true);
       
+      // 환경에 맞는 redirectTo URL 생성
+      const redirectTo = getRedirectUrl('https://www.easyticket82.com/auth/callback');
+      
       // 로그인 시작 시점의 전체 localStorage 상태 확인
       if (typeof window !== 'undefined') {
+        // 🔍 도메인 정보 확인 (PKCE 플로우 디버깅용)
+        logDomainInfo('[KAKAO AUTH]');
+        
+        // redirectTo URL과 현재 도메인 비교
+        logDomainComparison(redirectTo, '[KAKAO AUTH]');
+        
         console.log("🧪 [DEBUG] 인증 시작 전 localStorage 전체 키:", Object.keys(localStorage));
         console.log("🗂️ [DEBUG] localStorage 전체 값들:");
         Object.entries(localStorage).forEach(([key, val]) => {
@@ -123,7 +133,7 @@ export default function KakaoLoginButton({
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: 'https://www.easyticket82.com/auth/callback',
+          redirectTo: redirectTo,
           scopes: 'profile_nickname profile_image account_email', // email 스코프 추가
           queryParams: {
             'single_account': 'true' // 하나의 계정만 허용하도록 플래그 추가
@@ -193,9 +203,29 @@ export default function KakaoLoginButton({
     }
   };
 
+  const handleKakaoLogin = async () => {
+    try {
+      // Step 0: 도메인 정보 확인 및 로깅
+      console.log('🔍 [STEP 0] 카카오 로그인 시작 - 도메인 정보 확인');
+      logDomainInfo('[KAKAO LOGIN]');
+      
+      // 환경에 맞는 redirectTo URL 생성
+      const redirectTo = getRedirectUrl('https://www.easyticket82.com/auth/callback');
+      console.log('🔗 [STEP 0] 생성된 redirectTo URL:', redirectTo);
+      
+      // 도메인 비교 및 잠재적 문제 확인
+      logDomainComparison(redirectTo, '[KAKAO LOGIN]');
+
+      await handleKakaoAuth();
+    } catch (err) {
+      console.error('인증 처리 중 오류 발생:', err);
+      toast.error('카카오 인증 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <button 
-      onClick={handleKakaoAuth}
+      onClick={handleKakaoLogin}
       className="w-full flex items-center justify-center bg-yellow-400 text-black py-3 px-4 rounded-md font-medium shadow-sm"
       style={{ backgroundColor: '#FEE500' }}
       disabled={isLoading}
