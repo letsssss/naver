@@ -22,9 +22,13 @@ export default function KakaoLoginButton({
     try {
       setIsLoading(true);
       console.log('🚀 [KAKAO] 표준 OAuth 시작');
+      console.log('🌐 [KAKAO] 현재 URL:', window.location.href);
+      console.log('🔗 [KAKAO] Redirect URL:', `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.easyticket82.com'}/api/auth/callback`);
       
       const supabase = createBrowserClient();
+      console.log('✅ [KAKAO] Supabase 클라이언트 생성 완료');
       
+      console.log('🔄 [KAKAO] signInWithOAuth 호출 중...');
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
@@ -32,8 +36,12 @@ export default function KakaoLoginButton({
         },
       });
 
+      console.log('📊 [KAKAO] OAuth 응답 데이터:', data);
+      console.log('📊 [KAKAO] OAuth 응답 오류:', error);
+
       if (error) {
         console.error('❌ [KAKAO] OAuth 오류:', error.message);
+        console.error('❌ [KAKAO] OAuth 오류 상세:', error);
         throw error;
       }
 
@@ -44,7 +52,8 @@ export default function KakaoLoginButton({
       }
     } catch (err) {
       console.error('❌ [KAKAO] 인증 오류:', err);
-      alert('카카오 인증 중 오류가 발생했습니다.');
+      console.error('❌ [KAKAO] 인증 오류 상세:', JSON.stringify(err, null, 2));
+      alert('카카오 인증 중 오류가 발생했습니다: ' + (err as Error).message);
       setIsLoading(false);
     }
   };
