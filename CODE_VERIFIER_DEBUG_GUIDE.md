@@ -5,27 +5,56 @@
 
 ## ⚠️ **중요: Supabase v2 PKCE 플로우 주의사항**
 
-### ✅ **올바른 방법**
+### ✅ **올바른 방법 (엣지 브라우저 대응)**
 ```typescript
-// ✅ Supabase가 자동으로 리디렉션 처리
+// ✅ Supabase가 자동으로 리디렉션 처리 (엣지 브라우저 대응)
 const { data, error } = await supabase.auth.signInWithOAuth({
   provider: 'kakao',
   options: {
-    redirectTo: window.location.origin + '/auth/callback',
+    redirectTo: window.location.origin + '/auth/callback', // 정확히 현재 도메인과 동일
   }
 });
-// data.url을 사용하지 말고 Supabase가 알아서 처리하도록 둡니다!
+// data.url을 사용하지 말고 Supabase가 같은 탭에서 처리하도록 둡니다!
 ```
 
 ### ❌ **피해야 할 방법**
 ```typescript
-// ❌ 수동 리디렉션은 localStorage 격리를 발생시킵니다!
+// ❌ 수동 리디렉션은 localStorage 격리를 발생시킵니다! (특히 엣지 브라우저)
 window.location.href = data.url;
-window.open(data.url);
+window.open(data.url); // 팝업 차단 + localStorage 격리
 await waitForCodeVerifierAndRedirect(data.url);
 ```
 
-**이유**: Supabase v2에서는 `signInWithOAuth()` 내부에서 자동으로 PKCE 플로우를 관리하므로, 수동 리디렉션을 사용하면 `code_verifier`가 손실될 수 있습니다.
+**이유**: 
+- Supabase v2에서는 `signInWithOAuth()` 내부에서 자동으로 PKCE 플로우를 관리
+- 엣지 브라우저에서 수동 리디렉션 시 localStorage 격리 현상 발생
+- 같은 탭에서 리디렉션해야 `code_verifier` 보존됨
+
+### 🌐 **엣지 브라우저 특별 대응**
+
+#### 1. **팝업 차단 설정 해제**
+엣지 주소창에 입력:
+```
+edge://settings/content/popups
+```
+- `www.easyticket82.com` 허용 목록에 추가
+- `localhost:3000` (개발 환경) 허용 목록에 추가
+
+#### 2. **localStorage 크로스탭 공유 테스트**
+```javascript
+// 로그인 페이지에서 실행
+localStorage.setItem('testKey', '123');
+
+// 콜백 페이지에서 확인
+localStorage.getItem('testKey'); // null이면 localStorage 격리됨
+```
+
+#### 3. **엣지 브라우저 디버깅 로그**
+```typescript
+console.log("🧪 [EDGE DEBUG] 브라우저 정보:", navigator.userAgent);
+console.log("🧪 [EDGE DEBUG] Same Origin check:", window.location.origin === "https://www.easyticket82.com");
+console.log("🧪 [EDGE DEBUG] localStorage testKey:", localStorage.getItem("testKey"));
+```
 
 ## 🔧 수정된 디버깅 로그 단계
 
@@ -123,6 +152,22 @@ console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase
 4. **4단계**: localStorage 격리로 인해 사라짐 ❌
 
 **원인**: `data.url`을 수동으로 사용하여 Supabase 내부 PKCE 관리 방해
+
+### 🔴 문제 케이스 D: 엣지 브라우저 localStorage 격리 (신규)
+1. **1단계**: `code_verifier` 없음
+2. **2단계**: `code_verifier` 생성됨 ✅
+3. **3단계**: Supabase 자동 리디렉션 실행 ✅
+4. **4단계**: 엣지 브라우저에서 localStorage 격리로 사라짐 ❌
+
+**원인**: 
+- 엣지 브라우저의 특수한 탭 간 localStorage 격리 정책
+- 팝업 차단 설정으로 인한 새 탭 생성
+- Same Origin이지만 탭 컨텍스트 분리
+
+**해결 방법**:
+- `edge://settings/content/popups`에서 사이트 허용
+- `redirectTo`를 정확히 `window.location.origin + '/auth/callback'`로 설정
+- 엣지 브라우저 디버깅 로그로 localStorage 크로스탭 테스트
 
 ## 🛠️ 테스트 방법
 

@@ -17,6 +17,26 @@ export default function AuthCallback() {
       // ✅ ④ 콜백 페이지 진입 시점 - 정밀 디버깅
       console.log("🎯 [콜백 페이지] 진입 시작");
       
+      // 🧪 엣지 브라우저 localStorage 크로스탭 테스트
+      if (typeof window !== 'undefined') {
+        console.log("🧪 [EDGE DEBUG][Callback] 브라우저 정보:", navigator.userAgent);
+        console.log("🧪 [EDGE DEBUG][Callback] 현재 Origin:", window.location.origin);
+        console.log("🧪 [EDGE DEBUG][Callback] Same Origin check:", window.location.origin === "https://www.easyticket82.com");
+        
+        // localStorage 크로스탭 공유 테스트 - 로그인 페이지에서 설정한 테스트 키 확인
+        const testKeys = Object.keys(localStorage).filter(k => k.startsWith('pkce_test_'));
+        console.log("🧪 [EDGE DEBUG][Callback] localStorage 테스트 키들:", testKeys);
+        testKeys.forEach(key => {
+          const value = localStorage.getItem(key);
+          console.log(`🧪 [EDGE DEBUG][Callback] ${key}:`, value);
+          if (value === 'edge_test_value') {
+            console.log("✅ [EDGE DEBUG][Callback] localStorage 크로스탭 공유 정상!");
+          } else {
+            console.warn("⚠️ [EDGE DEBUG][Callback] localStorage 크로스탭 공유 실패 - 엣지 브라우저 격리 문제!");
+          }
+        });
+      }
+      
       // 도메인 정보 확인
       logDomainInfo('[AUTH CALLBACK]');
       

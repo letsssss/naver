@@ -26,8 +26,8 @@ export default function KakaoLoginButton({
     try {
       setIsLoading(true);
       
-      // 환경에 맞는 redirectTo URL 생성
-      const redirectTo = getRedirectUrl('https://www.easyticket82.com/auth/callback');
+      // 환경에 맞는 redirectTo URL 생성 (엣지 브라우저 대응)
+      const redirectTo = window.location.origin + '/auth/callback'; // 정확히 현재 도메인과 동일
       
       // 로그인 시작 시점의 전체 localStorage 상태 확인
       if (typeof window !== 'undefined') {
@@ -36,6 +36,18 @@ export default function KakaoLoginButton({
         
         // redirectTo URL과 현재 도메인 비교
         logDomainComparison(redirectTo, '[KAKAO AUTH]');
+        
+        // 🧪 엣지 브라우저 localStorage 테스트
+        console.log("🧪 [EDGE DEBUG] 브라우저 정보:", navigator.userAgent);
+        console.log("🧪 [EDGE DEBUG] 현재 Origin:", window.location.origin);
+        console.log("🧪 [EDGE DEBUG] redirectTo:", redirectTo);
+        console.log("🧪 [EDGE DEBUG] Origin 일치:", window.location.origin === redirectTo.replace('/auth/callback', ''));
+        
+        // localStorage 크로스탭 공유 테스트
+        const testKey = 'pkce_test_' + Date.now();
+        localStorage.setItem(testKey, 'edge_test_value');
+        console.log("🧪 [EDGE DEBUG] localStorage 테스트 키 설정:", testKey);
+        console.log("🧪 [EDGE DEBUG] localStorage 테스트 값:", localStorage.getItem(testKey));
         
         console.log("🧪 [DEBUG] 인증 시작 전 localStorage 전체 키:", Object.keys(localStorage));
         console.log("🗂️ [DEBUG] localStorage 전체 값들:");
@@ -98,12 +110,13 @@ export default function KakaoLoginButton({
         console.log("💾 [OAuth] 인증 모드 저장:", mode);
       }
       
-      // ✅ 카카오 OAuth 요청 - Supabase가 자동으로 리디렉션 처리
-      console.log("🚀 [CRITICAL] Supabase 자동 리디렉션 시작");
+      // ✅ 카카오 OAuth 요청 - Supabase가 자동으로 리디렉션 처리 (엣지 브라우저 대응)
+      console.log("🚀 [CRITICAL] Supabase 자동 리디렉션 시작 (엣지 브라우저 대응)");
+      console.log("🔗 [EDGE] 정확한 redirectTo URL:", redirectTo);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: redirectTo,
+          redirectTo: redirectTo, // 정확히 현재 도메인과 동일
           scopes: 'profile_nickname profile_image account_email',
           queryParams: {
             'single_account': 'true'
@@ -130,13 +143,15 @@ export default function KakaoLoginButton({
         return;
       }
 
-      // ✅ 중요: data.url을 수동으로 사용하지 않음!
-      // Supabase가 자동으로 리디렉션을 처리합니다.
+      // ✅ 중요: data.url을 수동으로 사용하지 않음! (엣지 브라우저 대응)
+      // Supabase가 같은 탭에서 자동으로 리디렉션을 처리합니다.
       if (data?.url) {
         console.log("🌐 [INFO] Supabase가 생성한 OAuth URL:", data.url);
-        console.log("✅ [INFO] Supabase가 자동으로 리디렉션을 처리합니다.");
+        console.log("✅ [INFO] Supabase가 같은 탭에서 자동으로 리디렉션을 처리합니다.");
+        console.log("🚫 [EDGE] window.location.href 사용 안함 (localStorage 격리 방지)");
+        console.log("🚫 [EDGE] window.open 사용 안함 (팝업 차단 방지)");
         // ❌ window.location.href = data.url; // 이렇게 하면 안됨!
-        // ❌ await waitForCodeVerifierAndRedirect(data.url); // 이것도 안됨!
+        // ❌ window.open(data.url); // 이것도 안됨!
       } else {
         console.warn("⚠️ [OAuth] URL이 생성되지 않았습니다.");
       }
