@@ -17,34 +17,33 @@ const options = {
   },
 };
 
-// ✅ 싱글톤 인스턴스 관리용 변수들
-let supabaseInstance: SupabaseClient<Database> | null = null;
-let adminSupabaseInstance: SupabaseClient<Database> | null = null;
+// ✅ 싱글톤 인스턴스 관리용 변수들 (브라우저용 단일 인스턴스)
 let browserClientInstance: SupabaseClient<Database> | null = null;
+let adminSupabaseInstance: SupabaseClient<Database> | null = null;
 let initAttempted = false;
 
 /**
  * 브라우저에서 사용하기 위한 Supabase 클라이언트를 생성합니다.
- * 이 클라이언트는 auth-helpers-nextjs를 사용하여 쿠키 기반 인증을 자동으로 처리합니다.
- * 브라우저 환경에서만 사용할 수 있습니다.
+ * 싱글톤 패턴으로 단일 인스턴스만 생성하여 PKCE 플로우 충돌을 방지합니다.
  */
 export function createBrowserClient(): SupabaseClient<Database> {
-  // 브라우저 환경이 아니면 일반 클라이언트 반환
+  // 브라우저 환경이 아니면 서버 클라이언트 반환
   if (typeof window === 'undefined') {
-    console.warn('브라우저 환경이 아닙니다. 일반 클라이언트를 반환합니다.');
-    return getSupabaseClient();
+    console.warn('브라우저 환경이 아닙니다. 서버 클라이언트를 반환합니다.');
+    return createLegacyServerClient();
   }
   
-  // 이미 생성된 인스턴스가 있으면 재사용
+  // ✅ 이미 생성된 인스턴스가 있으면 재사용 (중복 생성 방지)
   if (browserClientInstance) {
+    console.log('🔄 기존 브라우저 클라이언트 인스턴스 재사용');
     return browserClientInstance;
   }
   
   try {
-    console.log('✅ 브라우저 클라이언트 생성 (@supabase/auth-helpers-nextjs)');
+    console.log('✅ 브라우저 클라이언트 생성 (싱글톤 패턴)');
     
-    // 🔧 PKCE 플로우를 위한 일반 createClient 사용 (더 명확한 제어)
-    const client = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    // 🔧 PKCE 플로우를 위한 일반 createClient 사용
+    browserClientInstance = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
@@ -55,12 +54,10 @@ export function createBrowserClient(): SupabaseClient<Database> {
       },
       global: {
         headers: {
-          'X-Client-Info': 'easyticket-browser-client'
+          'X-Client-Info': 'easyticket-browser-singleton'
         }
       }
     });
-    
-    browserClientInstance = client;
     
     console.log('✅ 브라우저 클라이언트 생성 성공 (PKCE 인증 흐름 활성화)');
     
@@ -84,51 +81,65 @@ export function createBrowserClient(): SupabaseClient<Database> {
     return browserClientInstance;
   } catch (error) {
     console.error('브라우저 클라이언트 생성 오류:', error);
-    // 오류 발생 시 일반 클라이언트로 폴백
-    supabaseInstance = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, options);
-    return supabaseInstance;
+    // 오류 발생 시 null로 초기화하여 재시도 가능하게 함
+    browserClientInstance = null;
+    throw error;
   }
 }
 
-// ✅ 싱글톤 Supabase 인스턴스 생성
+// ✅ 통합된 클라이언트 생성 함수 (싱글톤 패턴)
 const createSupabaseInstance = (): SupabaseClient<Database> => {
-  if (supabaseInstance) {
-    return supabaseInstance;
-  }
-  
   if (initAttempted) {
-    console.warn('[Supabase] 이전 초기화 시도가 있었지만 생성되지 않았습니다. 재시도합니다.');
+    console.warn('[Supabase] 이전 초기화 시도가 있었습니다.');
   }
   
   initAttempted = true;
   
   try {
-    // 브라우저 환경에서는 createBrowserClient 사용
+    // 브라우저 환경에서는 createBrowserClient 사용 (싱글톤)
     if (typeof window !== 'undefined') {
       return createBrowserClient();
     }
     
-    supabaseInstance = createClient<Database>(
+    // 서버 환경에서는 새 인스턴스 생성
+    const serverInstance = createClient<Database>(
       SUPABASE_URL,
       SUPABASE_ANON_KEY,
-      options
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
     
-    // 디버깅용 로그
-    if (typeof window !== 'undefined') {
-      console.log('✅ Supabase 클라이언트 초기화 완료');
-      console.log('🔗 URL:', SUPABASE_URL.substring(0, 15) + '...');
-    }
+    console.log('✅ 서버 Supabase 클라이언트 초기화 완료');
     
-    return supabaseInstance;
+    return serverInstance;
   } catch (error) {
     console.error('[Supabase] 클라이언트 생성 오류:', error);
     throw error;
   }
 };
 
-// 초기 인스턴스 생성
-const supabase = createSupabaseInstance();
+// ✅ 서버 환경에서는 null, 브라우저 환경에서는 지연 생성
+const supabase = typeof window === 'undefined' 
+  ? null // 서버 환경에서는 null로 설정
+  : null; // 브라우저 환경에서는 null로 설정
+
+/**
+ * 현재 클라이언트나 서버 환경에 맞는 Supabase 클라이언트를 반환합니다.
+ * 싱글톤 패턴으로 중복 인스턴스 생성을 방지합니다.
+ */
+export function getSupabaseClient(): SupabaseClient<Database> {
+  // 브라우저 환경에서는 createBrowserClient 사용 (싱글톤)
+  if (typeof window !== 'undefined') {
+    return createBrowserClient();
+  }
+  
+  // 서버 환경에서는 매번 새 인스턴스 생성 (상태 공유 방지)
+  return createSupabaseInstance();
+}
 
 /**
  * Next.js 서버 컴포넌트에서 사용하기 위한 Supabase 클라이언트를 생성합니다.
@@ -233,13 +244,6 @@ export function createAdminClient(cookieStore?: any): SupabaseClient<Database> {
 export const adminSupabase = typeof window === 'undefined' 
   ? createAdminClient() 
   : null; // 브라우저 환경에서는 null로 설정
-
-/**
- * 현재 클라이언트나 서버 환경에 맞는 Supabase 클라이언트를 반환합니다.
- */
-export function getSupabaseClient(): SupabaseClient<Database> {
-  return supabase || createSupabaseInstance();
-}
 
 /**
  * ID 값을 문자열로 변환합니다.
@@ -374,5 +378,5 @@ export function createTokenClient(token: string) {
 }
 
 // ✅ named + default export 둘 다 제공
-export { supabase };
-export default supabase; 
+export { getSupabaseClient as supabase };
+export default getSupabaseClient; 
