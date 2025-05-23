@@ -20,9 +20,15 @@ export default function Page() {
     console.log("🔍 [메인 페이지] OAuth 콜백 여부:", isOAuthCallback ? "예" : "아님");
     
     if (isOAuthCallback) {
-      console.log("✅ [메인 페이지] 인증 콜백 감지됨 → 리디렉션 하지 않음");
-      console.log("✅ [메인 페이지] 홈페이지에 머물러서 인증 처리 대기");
-      return; // 인증 콜백이면 아무 것도 안 함 (리디렉션 금지)
+      console.log("🔄 [메인 페이지] OAuth 콜백 감지됨 → /auth/callback으로 리디렉션");
+      
+      // 현재 URL의 모든 파라미터를 콜백 페이지로 전달
+      const currentParams = window.location.search;
+      const redirectUrl = `/auth/callback${currentParams}`;
+      
+      console.log("🔗 [메인 페이지] 리디렉션 URL:", redirectUrl);
+      router.replace(redirectUrl);
+      return;
     }
     
     // 일반 진입 시 → 티켓취소 안내 페이지로 이동
