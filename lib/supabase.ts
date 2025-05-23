@@ -43,24 +43,31 @@ export function createBrowserClient(): SupabaseClient<Database> {
   try {
     console.log('✅ 브라우저 클라이언트 생성 (@supabase/auth-helpers-nextjs)');
     
-    // PKCE 인증 흐름을 위한 createPagesBrowserClient 사용 
-    const client = createPagesBrowserClient<Database>({
-      supabaseUrl: SUPABASE_URL,
-      supabaseKey: SUPABASE_ANON_KEY,
-      cookieOptions: {
-        name: 'sb-auth-token',
-        secure: true,                // ✅ HTTPS 필수
-        sameSite: 'None',            // ✅ 크로스 도메인 대응
-        path: '/',
-        domain: '.easyticket82.com'  // ✅ 모든 서브도메인 포함
+    // 🔧 PKCE 플로우를 위한 일반 createClient 사용 (더 명확한 제어)
+    const client = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',           // ✅ PKCE 플로우 강제 활성화
+        storage: window.localStorage, // ✅ localStorage 명시적 지정
+        storageKey: 'sb-auth-token', // ✅ 스토리지 키 명시적 지정
       },
+      global: {
+        headers: {
+          'X-Client-Info': 'easyticket-browser-client'
+        }
+      }
     });
     
-    // PKCE 흐름 설정 (타입 오류를 방지하기 위해 별도로 설정)
-    const supabaseClient = client as SupabaseClient<Database>;
-    browserClientInstance = supabaseClient;
+    browserClientInstance = client;
     
     console.log('✅ 브라우저 클라이언트 생성 성공 (PKCE 인증 흐름 활성화)');
+    
+    // 🔧 PKCE 설정 확인 로그
+    console.log('🔧 [PKCE] localStorage 접근 가능:', typeof window.localStorage !== 'undefined');
+    console.log('🔧 [PKCE] 현재 도메인:', window.location.origin);
+    console.log('🔧 [PKCE] 스토리지 키:', 'sb-auth-token');
     
     // 세션 확인 테스트
     browserClientInstance.auth.getSession().then(({ data }) => {
