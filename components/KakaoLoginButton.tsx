@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { createBrowserClient } from '@/lib/supabase';
 
 type KakaoLoginButtonProps = {
   mode?: 'login' | 'signup';
@@ -18,47 +18,40 @@ export default function KakaoLoginButton({
   
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
-  const handleKakaoLogin = async () => {
+  const signInWithKakao = async () => {
     try {
       setIsLoading(true);
-      console.log('🚀 [KAKAO] 서버 사이드 인증 시작');
+      console.log('🚀 [KAKAO] 표준 OAuth 시작');
       
-      // 서버 API를 통한 카카오 인증 (PKCE 문제 해결)
-      const response = await fetch('/api/auth/kakao', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const supabase = createBrowserClient();
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: {
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.easyticket82.com'}/api/auth/callback`,
         },
-        body: JSON.stringify({ mode }),
       });
 
-      if (!response.ok) {
-        throw new Error('카카오 인증 요청 실패');
+      if (error) {
+        console.error('❌ [KAKAO] OAuth 오류:', error.message);
+        throw error;
       }
 
-      const data = await response.json();
+      console.log('✅ [KAKAO] OAuth 요청 성공');
       
-      if (data.authUrl) {
-        console.log('🔗 [KAKAO] 인증 URL 받음:', data.authUrl);
-        // 서버에서 받은 인증 URL로 리디렉션
-        window.location.href = data.authUrl;
-      } else {
-        throw new Error('인증 URL을 받지 못했습니다');
-      }
-
       if (onSuccess) {
         onSuccess();
       }
     } catch (err) {
       console.error('❌ [KAKAO] 인증 오류:', err);
-      toast.error('카카오 인증 중 오류가 발생했습니다.');
+      alert('카카오 인증 중 오류가 발생했습니다.');
       setIsLoading(false);
     }
   };
 
   return (
     <button 
-      onClick={handleKakaoLogin}
+      onClick={signInWithKakao}
       className="w-full flex items-center justify-center bg-yellow-400 text-black py-3 px-4 rounded-md font-medium shadow-sm"
       style={{ backgroundColor: '#FEE500' }}
       disabled={isLoading}

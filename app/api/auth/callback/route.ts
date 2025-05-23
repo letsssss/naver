@@ -1,48 +1,31 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { supabaseServer } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import type { Database } from '@/types/supabase.types';
 
-export async function POST(req: Request) {
-  const requestUrl = new URL(req.url);
-  console.log("📦 [Callback] POST 요청 수신됨, URL:", requestUrl.toString());
-  
-  const supabase = createRouteHandlerClient<Database>({ cookies });
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get('code');
+  const next = searchParams.get('next') ?? '/';
 
-  try {
-    const { event, session } = await req.json();
-    
-    console.log("📦 [Callback] 이벤트:", event);
-    console.log("🔐 [Callback] 세션 존재 여부:", !!session);
-    
-    if (session) {
-      console.log("🔐 [Callback] access_token 존재 여부:", !!session.access_token);
-      console.log("🔐 [Callback] refresh_token 존재 여부:", !!session.refresh_token);
-      console.log("🔐 [Callback] 사용자 ID:", session.user?.id);
+  console.log('🔄 [CALLBACK] OAuth 콜백 처리 시작');
+  console.log('📝 [CALLBACK] Code:', code ? '존재함' : '없음');
+  console.log('📍 [CALLBACK] Next:', next);
+
+  const supabase = supabaseServer();
+
+  if (code) {
+    console.log('🔑 [CALLBACK] 코드를 세션으로 교환 중...');
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (!error) {
+      console.log('✅ [CALLBACK] 세션 교환 성공');
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}${next}`);
+    } else {
+      console.error('❌ [CALLBACK] 세션 교환 실패:', error.message);
     }
-
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-      console.log("✅ [Callback] 세션 설정 시도:", event);
-      
-      // Supabase auth-helpers가 자동으로 쿠키 설정해줌
-      await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      });
-      
-      console.log("✅ [Callback] 세션 설정 완료");
-    }
-
-    // 리다이렉트 대신 JSON 응답 반환
-    return NextResponse.json({ 
-      success: true, 
-      message: "Session cookies updated" 
-    });
-  } catch (error) {
-    console.error("❌ [Callback] 오류 발생:", error);
-    return NextResponse.json({
-      success: false,
-      message: "Session update failed"
-    }, { status: 500 });
+  } else {
+    console.error('❌ [CALLBACK] 인증 코드가 없음');
   }
+
+  console.log('🚨 [CALLBACK] 인증 오류 페이지로 리디렉션');
+  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/auth/auth-code-error`);
 } 
