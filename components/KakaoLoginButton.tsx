@@ -28,7 +28,7 @@ export default function KakaoLoginButton({
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.easyticket82.com'}/auth/callback`,
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.easyticket82.com'}/api/auth/callback`,
         },
       });
 
