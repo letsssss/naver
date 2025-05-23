@@ -28,6 +28,16 @@ export default function KakaoLoginButton({
       console.log('🚀 [KAKAO] 표준 OAuth 시작');
       console.log('🌐 [KAKAO] 현재 URL:', window.location.href);
       
+      // 🔧 localStorage 상태 확인 (OAuth 시작 전)
+      console.log('📦 [KAKAO] OAuth 시작 전 localStorage 상태:');
+      const allKeys = Object.keys(localStorage);
+      const supabaseKeys = allKeys.filter(key => key.includes('supabase') || key.includes('sb-') || key.includes('code_verifier'));
+      console.log('  - Supabase 관련 키들:', supabaseKeys);
+      supabaseKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        console.log(`  - ${key}:`, value ? `${value.substring(0, 50)}...` : 'null');
+      });
+      
       // 🔧 동적 redirectTo URL 생성
       const getRedirectUrl = () => {
         const currentOrigin = window.location.origin;
@@ -57,6 +67,16 @@ export default function KakaoLoginButton({
 
       console.log('📊 [KAKAO] OAuth 응답 데이터:', data);
       console.log('📊 [KAKAO] OAuth 응답 오류:', error);
+      
+      // 🔧 localStorage 상태 확인 (OAuth 호출 후)
+      console.log('📦 [KAKAO] OAuth 호출 후 localStorage 상태:');
+      const allKeysAfter = Object.keys(localStorage);
+      const supabaseKeysAfter = allKeysAfter.filter(key => key.includes('supabase') || key.includes('sb-') || key.includes('code_verifier'));
+      console.log('  - Supabase 관련 키들:', supabaseKeysAfter);
+      supabaseKeysAfter.forEach(key => {
+        const value = localStorage.getItem(key);
+        console.log(`  - ${key}:`, value ? `${value.substring(0, 50)}...` : 'null');
+      });
       
       if (data?.url) {
         console.log('🔗 [KAKAO] 실제 리디렉션 URL:', data.url);

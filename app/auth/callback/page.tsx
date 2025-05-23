@@ -78,6 +78,16 @@ export default function AuthCallback() {
         const supabase = createBrowserClient()
         console.log('✅ [AUTH CALLBACK] Supabase 클라이언트 생성 완료')
         
+        // 🔧 localStorage 상태 확인 (세션 교환 전)
+        console.log('📦 [AUTH CALLBACK] 세션 교환 전 localStorage 상태:');
+        const allKeys = Object.keys(localStorage);
+        const supabaseKeys = allKeys.filter(key => key.includes('supabase') || key.includes('sb-') || key.includes('code_verifier'));
+        console.log('  - Supabase 관련 키들:', supabaseKeys);
+        supabaseKeys.forEach(key => {
+          const value = localStorage.getItem(key);
+          console.log(`  - ${key}:`, value ? `${value.substring(0, 50)}...` : 'null');
+        });
+        
         // 세션 교환 시도
         console.log('🔄 [AUTH CALLBACK] exchangeCodeForSession 호출 중...')
         const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
@@ -86,6 +96,16 @@ export default function AuthCallback() {
         console.log('  - data:', data)
         console.log('  - error:', sessionError)
         
+        // 🔧 localStorage 상태 확인 (세션 교환 후)
+        console.log('📦 [AUTH CALLBACK] 세션 교환 후 localStorage 상태:');
+        const allKeysAfter = Object.keys(localStorage);
+        const supabaseKeysAfter = allKeysAfter.filter(key => key.includes('supabase') || key.includes('sb-') || key.includes('code_verifier'));
+        console.log('  - Supabase 관련 키들:', supabaseKeysAfter);
+        supabaseKeysAfter.forEach(key => {
+          const value = localStorage.getItem(key);
+          console.log(`  - ${key}:`, value ? `${value.substring(0, 50)}...` : 'null');
+        });
+
         setDebugInfo(prev => ({ 
           ...prev, 
           sessionData: data ? 'session_created' : 'no_session',

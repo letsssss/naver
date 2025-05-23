@@ -22,6 +22,16 @@ export default function Page() {
     if (isOAuthCallback) {
       console.log("🔄 [메인 페이지] OAuth 콜백 감지됨 → /auth/callback으로 리디렉션");
       
+      // 🔧 localStorage 상태 확인 (리디렉션 전)
+      console.log('📦 [메인 페이지] 리디렉션 전 localStorage 상태:');
+      const allKeys = Object.keys(localStorage);
+      const supabaseKeys = allKeys.filter(key => key.includes('supabase') || key.includes('sb-') || key.includes('code_verifier'));
+      console.log('  - Supabase 관련 키들:', supabaseKeys);
+      supabaseKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        console.log(`  - ${key}:`, value ? `${value.substring(0, 50)}...` : 'null');
+      });
+      
       // 현재 URL의 모든 파라미터를 콜백 페이지로 전달
       const currentParams = window.location.search;
       const redirectUrl = `/auth/callback${currentParams}`;
