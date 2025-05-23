@@ -30,11 +30,21 @@ export default function KakaoLoginButton({
     while (waited < maxWait) {
       const verifier = localStorage.getItem('supabase.auth.code_verifier');
       // ✅ ③ waitForCodeVerifierAndRedirect() 내부 루프 - 정밀 디버깅
-      console.log(`⏱️ [대기 중] ${waited}ms - code_verifier:`, verifier);
-      console.log(`🔍 [대기 중] ${waited}ms - localStorage 전체 키:`, Object.keys(localStorage));
+      console.log(`🕒 [PKCE 체크] ${waited}ms 경과 - code_verifier:`, verifier);
+      console.log(`🔍 [PKCE 체크] ${waited}ms - localStorage 전체 키:`, Object.keys(localStorage));
+      
+      // Supabase 관련 키들도 모두 확인
+      const supabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+      if (supabaseKeys.length > 0) {
+        console.log(`🔍 [PKCE 체크] ${waited}ms - supabase 관련 키들:`, supabaseKeys);
+        supabaseKeys.forEach(k => {
+          const value = localStorage.getItem(k);
+          console.log(`  🔑 ${k}:`, value ? `${value.substring(0, 20)}...` : 'null');
+        });
+      }
       
       if (verifier) {
-        console.log("✅ [PKCE] code_verifier 저장 완료:", verifier);
+        console.log("✅ [PKCE] code_verifier 최종 확인됨:", verifier);
         console.log("🚀 [PKCE] 카카오 인증 페이지로 리디렉션 시작");
         window.location.href = url;
         return;
@@ -97,8 +107,17 @@ export default function KakaoLoginButton({
       }
       
       // ✅ ① signInWithOAuth() 호출 직전 - 정밀 디버깅
-      console.log("🧪 [OAuth 직전] localStorage 상태:", Object.keys(localStorage));
+      console.log("🚀 [OAuth 시작] signInWithOAuth 호출 직전");
+      console.log("📦 [OAuth 시작 직전] localStorage 상태:", JSON.stringify(localStorage));
+      console.log("🧪 [OAuth 직전] localStorage 키 목록:", Object.keys(localStorage));
       console.log("🧪 [OAuth 직전] code_verifier:", localStorage.getItem('supabase.auth.code_verifier'));
+      
+      // 모든 supabase 관련 키 상세 확인
+      const allSupabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+      console.log("🔍 [OAuth 직전] supabase 관련 키들:", allSupabaseKeys);
+      allSupabaseKeys.forEach(k => {
+        console.log(`  🔑 [OAuth 직전] ${k}:`, localStorage.getItem(k));
+      });
       
       // 카카오 OAuth 요청 - redirectTo 추가
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -112,12 +131,19 @@ export default function KakaoLoginButton({
         }
       });
 
-      console.log("🔑 [OAuth 시작] data:", data)
-      console.log("❗ [OAuth 시작] error:", error)
-      
-      // ✅ ② signInWithOAuth() 호출 후 (data.url 받았을 때) - 정밀 디버깅
+      // ✅ ② signInWithOAuth() 호출 직후 - 정밀 디버깅
+      console.log("✅ [OAuth 결과] data:", data);
+      console.log("❗ [OAuth 결과] error:", error);
+      console.log("📦 [OAuth 직후] localStorage 상태:", JSON.stringify(localStorage));
       console.log("🧪 [OAuth 이후] code_verifier 상태:", localStorage.getItem('supabase.auth.code_verifier'));
       console.log("🌐 리디렉션 예정 URL:", data?.url);
+      
+      // OAuth 직후 모든 supabase 키 재확인
+      const postOAuthSupabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+      console.log("🔍 [OAuth 직후] supabase 관련 키들:", postOAuthSupabaseKeys);
+      postOAuthSupabaseKeys.forEach(k => {
+        console.log(`  🔑 [OAuth 직후] ${k}:`, localStorage.getItem(k));
+      });
 
       if (error) {
         console.error('카카오 인증 에러:', error.message);

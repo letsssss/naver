@@ -11,8 +11,9 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         // ✅ ④ Callback 페이지 진입 시 - 정밀 디버깅
-        console.log("🔍 [Callback 진입] localStorage 키:", Object.keys(localStorage));
-        console.log("🔍 [Callback 진입] code_verifier:", localStorage.getItem('supabase.auth.code_verifier'));
+        console.log("📥 [Callback] 페이지 진입");
+        console.log("📦 [Callback] localStorage 전체 키:", Object.keys(localStorage));
+        console.log("📦 [Callback] code_verifier 값:", localStorage.getItem('supabase.auth.code_verifier'));
         
         // localStorage 모든 키 출력 (콜백 페이지 진입 시점)
         if (typeof window !== 'undefined') {
@@ -25,6 +26,13 @@ export default function AuthCallback() {
           // PKCE 관련 키 특별 확인
           const codeVerifier = localStorage.getItem('supabase.auth.code_verifier');
           console.log("🔍 [PKCE DEBUG] 콜백 페이지 진입 시 code_verifier:", codeVerifier);
+          
+          // 모든 supabase 관련 키 확인
+          const supabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+          console.log("🔍 [Callback] supabase 관련 키들:", supabaseKeys);
+          supabaseKeys.forEach(k => {
+            console.log(`  🔑 [Callback] ${k}:`, localStorage.getItem(k));
+          });
         }
       
         // 인증 관련 로컬 스토리지 키 정리 (PKCE용 code_verifier 유지)
@@ -106,13 +114,20 @@ export default function AuthCallback() {
             
             // PKCE 상태 확인 (code 발견 시점)
             if (typeof window !== 'undefined') {
+              console.log("🔍 [PKCE] 인증 코드 발견 시점의 code_verifier 상태 확인");
+              const codeVerifier = localStorage.getItem('supabase.auth.code_verifier');
+              console.log("🔍 [PKCE DEBUG] 인증 코드 발견 시점의 code_verifier:", codeVerifier);
+              
+              if (!codeVerifier) {
+                console.error("❌ [PKCE ERROR] 인증 코드는 있지만 code_verifier가 없음!");
+                console.log("🔍 [PKCE ERROR] 현재 localStorage 전체:", Object.keys(localStorage));
+              } else {
+                console.log("✅ [PKCE SUCCESS] 인증 코드와 code_verifier 모두 존재");
+              }
+              
               const supabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
               console.log("🕵️‍♂️ [DEBUG] 인증 코드 발견 시점의 supabase.* 관련 localStorage:", supabaseKeys);
               supabaseKeys.forEach(k => console.log(`  🔑 ${k}:`, localStorage.getItem(k)));
-              
-              // PKCE 관련 키의 정확한 값 출력
-              const codeVerifier = localStorage.getItem('supabase.auth.code_verifier');
-              console.log("🔍 [PKCE DEBUG] 인증 코드 발견 시점의 code_verifier:", codeVerifier);
             }
             
             try {
@@ -139,6 +154,24 @@ export default function AuthCallback() {
                 // 세션 설정 성공 후 localStorage 상태 확인
                 if (typeof window !== 'undefined') {
                   console.log("🗂️ [DEBUG] 세션 설정 성공 후 localStorage 키:", Object.keys(localStorage));
+                  
+                  // 세션 설정 후 code_verifier 상태 확인
+                  const postSessionCodeVerifier = localStorage.getItem('supabase.auth.code_verifier');
+                  console.log("🔍 [PKCE] 세션 설정 후 code_verifier:", postSessionCodeVerifier);
+                  
+                  if (!postSessionCodeVerifier) {
+                    console.warn("⚠️ [PKCE] 세션 설정 후 code_verifier가 사라짐 (정상적인 동작일 수 있음)");
+                  } else {
+                    console.log("✅ [PKCE] 세션 설정 후에도 code_verifier 유지됨");
+                  }
+                  
+                  // 모든 supabase 키 재확인
+                  const postSessionSupabaseKeys = Object.keys(localStorage).filter(k => k.includes('supabase'));
+                  console.log("🔍 [세션 후] supabase 관련 키들:", postSessionSupabaseKeys);
+                  postSessionSupabaseKeys.forEach(k => {
+                    const value = localStorage.getItem(k);
+                    console.log(`  🔑 [세션 후] ${k}:`, value ? `${value.substring(0, 20)}...` : 'null');
+                  });
                 }
                 
                 handleSuccessfulAuth();
