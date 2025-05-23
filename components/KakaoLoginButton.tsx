@@ -29,9 +29,13 @@ export default function KakaoLoginButton({
 
     while (waited < maxWait) {
       const verifier = localStorage.getItem('supabase.auth.code_verifier');
-      console.log(`[PKCE 체크] ${waited}ms 대기 중 - 현재 verifier:`, verifier);
+      // ✅ ③ waitForCodeVerifierAndRedirect() 내부 루프 - 정밀 디버깅
+      console.log(`⏱️ [대기 중] ${waited}ms - code_verifier:`, verifier);
+      console.log(`🔍 [대기 중] ${waited}ms - localStorage 전체 키:`, Object.keys(localStorage));
+      
       if (verifier) {
         console.log("✅ [PKCE] code_verifier 저장 완료:", verifier);
+        console.log("🚀 [PKCE] 카카오 인증 페이지로 리디렉션 시작");
         window.location.href = url;
         return;
       }
@@ -40,6 +44,7 @@ export default function KakaoLoginButton({
     }
 
     console.warn("⚠️ [PKCE] code_verifier가 3초 내 저장되지 않음 → 그래도 리디렉션");
+    console.log("🔍 [타임아웃] 최종 localStorage 상태:", Object.keys(localStorage));
     window.location.href = url;
   };
 
@@ -91,6 +96,10 @@ export default function KakaoLoginButton({
         console.log("🔍 [PKCE DEBUG] code_verifier:", codeVerifier);
       }
       
+      // ✅ ① signInWithOAuth() 호출 직전 - 정밀 디버깅
+      console.log("🧪 [OAuth 직전] localStorage 상태:", Object.keys(localStorage));
+      console.log("🧪 [OAuth 직전] code_verifier:", localStorage.getItem('supabase.auth.code_verifier'));
+      
       // 카카오 OAuth 요청 - redirectTo 추가
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
@@ -106,12 +115,9 @@ export default function KakaoLoginButton({
       console.log("🔑 [OAuth 시작] data:", data)
       console.log("❗ [OAuth 시작] error:", error)
       
-      // 🆕 OAuth 요청 직후 localStorage 디버깅 - PKCE 확인
-      if (typeof window !== 'undefined') {
-        console.log("🧪 [디버깅] OAuth 요청 직후 localStorage keys:", Object.keys(localStorage));
-        console.log("🔍 code_verifier 존재 여부:", localStorage.getItem('supabase.auth.code_verifier'));
-        // 이 로그에서 code_verifier가 null이면 Supabase가 내부적으로 저장을 실패한 것
-      }
+      // ✅ ② signInWithOAuth() 호출 후 (data.url 받았을 때) - 정밀 디버깅
+      console.log("🧪 [OAuth 이후] code_verifier 상태:", localStorage.getItem('supabase.auth.code_verifier'));
+      console.log("🌐 리디렉션 예정 URL:", data?.url);
 
       if (error) {
         console.error('카카오 인증 에러:', error.message);

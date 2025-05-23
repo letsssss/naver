@@ -10,6 +10,10 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // ✅ ④ Callback 페이지 진입 시 - 정밀 디버깅
+        console.log("🔍 [Callback 진입] localStorage 키:", Object.keys(localStorage));
+        console.log("🔍 [Callback 진입] code_verifier:", localStorage.getItem('supabase.auth.code_verifier'));
+        
         // localStorage 모든 키 출력 (콜백 페이지 진입 시점)
         if (typeof window !== 'undefined') {
           console.log("🗂️ [DEBUG] Callback 페이지 진입 시 localStorage 전체 키:", Object.keys(localStorage));
