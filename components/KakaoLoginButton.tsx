@@ -22,12 +22,14 @@ export default function KakaoLoginButton({
   const buttonText = text || (mode === 'login' ? '카카오로 로그인' : '카카오로 회원가입');
 
   const waitForCodeVerifierAndRedirect = async (url: string) => {
+    console.log("⏱️ [PKCE] code_verifier 저장 대기 시작");
     const maxWait = 3000;
     const interval = 100;
     let waited = 0;
 
     while (waited < maxWait) {
       const verifier = localStorage.getItem('supabase.auth.code_verifier');
+      console.log(`[PKCE 체크] ${waited}ms 대기 중 - 현재 verifier:`, verifier);
       if (verifier) {
         console.log("✅ [PKCE] code_verifier 저장 완료:", verifier);
         window.location.href = url;
